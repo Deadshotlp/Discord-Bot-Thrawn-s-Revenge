@@ -6,7 +6,7 @@ export function canManageServer(member) {
   }
 
   return (
-    member.permissions.has(PermissionFlagsBits.Administrator) ||
-    member.permissions.has(PermissionFlagsBits.ManageGuild)
+    member.permissions.has(PermissionFlagsBits.Administrator)
+    || member.permissions.has(PermissionFlagsBits.ManageGuild)
   );
 }

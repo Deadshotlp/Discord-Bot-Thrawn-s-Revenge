@@ -1,47 +1,38 @@
-import { commands } from "../commands/index.js";
-import { bootstrapSetupForGuild } from "./guildCreate.js";
+import { runEventHandlers } from "../core/moduleRuntime.js";
 
 export async function handleReady(client) {
-  const { logger, guildSettingsRepository } = client.botContext;
-  const commandPayload = commands.map((command) => command.data.toJSON());
+  const { logger, commandPayload, modules } = client.botContext;
 
-  logger.info(`Bot ist online als ${client.user.tag}.`);
+  logger.info(`Bot ist online als ${client.user.tag}`);
 
   try {
     const globalCommands = await client.application.commands.fetch();
     if (globalCommands.size > 0) {
       await client.application.commands.set([]);
-      logger.info("Alte globale Slash-Commands entfernt.", {
-        removedCount: globalCommands.size
+      logger.info("Globale Slash-Commands wurden geleert", {
+        removed: globalCommands.size
       });
     }
   } catch (error) {
-    logger.warn("Globale Slash-Commands konnten nicht entfernt werden.", {
+    logger.warn("Globale Slash-Commands konnten nicht geleert werden", {
       error: String(error)
     });
   }
 
   for (const guild of client.guilds.cache.values()) {
-    guildSettingsRepository.ensureGuild(guild.id);
-
     try {
       await guild.commands.set(commandPayload);
-      logger.info("Slash-Commands für Guild registriert.", {
+      logger.info("Guild-Commands registriert", {
         guildId: guild.id,
-        commandCount: commandPayload.length
+        count: commandPayload.length
       });
     } catch (error) {
-      logger.warn("Slash-Commands konnten für Guild nicht registriert werden.", {
+      logger.warn("Guild-Commands konnten nicht registriert werden", {
         guildId: guild.id,
         error: String(error)
       });
     }
-
-    await bootstrapSetupForGuild(guild, {
-      forcePostPanels: false,
-      source: "ready-reconcile"
-    });
   }
 
-  logger.info(`Guild-Konfigurationen geprüft: ${client.guilds.cache.size}`);
+  await runEventHandlers(modules, "ready", { client }, logger);
 }

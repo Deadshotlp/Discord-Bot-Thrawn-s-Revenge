@@ -1,13 +1,13 @@
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
-import { postSetupPanels } from "../features/setup/panel.js";
-import { canManageServer } from "../utils/permissions.js";
+import { canManageServer } from "../../../core/permissions.js";
+import { postSetupPanel } from "../services/panel.js";
 
 export const setupPanelCommand = {
   data: new SlashCommandBuilder()
     .setName("setup-panel")
-    .setDescription("Postet die Bot-Setup-Panels im aktuellen Channel."),
+    .setDescription("Postet das Setup-Panel der modularen Basis."),
 
-  async execute(interaction) {
+  async execute({ interaction }) {
     if (!canManageServer(interaction.member)) {
       await interaction.reply({
         content: "Diesen Befehl dürfen nur Admins oder Mitglieder mit Server-verwalten nutzen.",
@@ -24,10 +24,10 @@ export const setupPanelCommand = {
       return;
     }
 
-    await postSetupPanels(interaction.channel);
+    await postSetupPanel(interaction.channel);
 
     await interaction.reply({
-      content: "Setup-Panels wurden erfolgreich gepostet.",
+      content: "Setup-Panel wurde gepostet.",
       flags: MessageFlags.Ephemeral
     });
   }
