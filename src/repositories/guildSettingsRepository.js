@@ -59,7 +59,7 @@ export class GuildSettingsRepository {
 
   setField(guildId, field, value) {
     if (!ALLOWED_SETTING_FIELDS.has(field)) {
-      throw new Error(`Ungueltiges Konfigurationsfeld: ${field}`);
+      throw new Error(`Ungültiges Konfigurationsfeld: ${field}`);
     }
 
     this.ensureGuild(guildId);
@@ -81,7 +81,7 @@ export class GuildSettingsRepository {
 
     for (const [field, value] of Object.entries(fields)) {
       if (!ALLOWED_SETTING_FIELDS.has(field)) {
-        throw new Error(`Ungueltiges Konfigurationsfeld: ${field}`);
+        throw new Error(`Ungültiges Konfigurationsfeld: ${field}`);
       }
 
       const stmt = this.db.prepare(`

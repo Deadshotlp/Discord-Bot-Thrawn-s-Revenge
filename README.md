@@ -16,7 +16,7 @@ sudo apt update
 sudo apt install -y nodejs npm
 ```
 
-Empfohlen ist jedoch Node 20 ueber NVM, damit native Pakete wie better-sqlite3 stabil laufen:
+Empfohlen ist jedoch Node 20 über NVM, damit native Pakete wie better-sqlite3 stabil laufen:
 
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
@@ -35,7 +35,7 @@ nvm use
 1. Node.js 20+ installieren.
 2. Datei `.env` aus `.env.example` erstellen.
 3. Token in `.env` eintragen.
-4. Abhaengigkeiten installieren:
+4. Abhängigkeiten installieren:
 
 ```bash
 npm install
@@ -60,13 +60,13 @@ Empfohlene Bot-Rechte:
 
 ## Setup-Flow
 
-Beim Join auf einen neuen Server versucht der Bot, einen privaten Setup-Channel (`bot-setup`) anzulegen und dort Konfigurations-Panels zu posten. Nur Admins koennen die Werte anpassen.
+Beim Join auf einen neuen Server versucht der Bot, einen privaten Setup-Channel (`bot-setup`) anzulegen und dort Konfigurations-Panels zu posten. Nur Admins können die Werte anpassen.
 
-Die ausgewaehlten Werte werden erst aktiv umgesetzt, wenn im Setup-Panel der Button `Konfiguration anwenden` geklickt wird.
+Die ausgewählten Werte werden erst aktiv umgesetzt, wenn im Setup-Panel der Button `Konfiguration anwenden` geklickt wird.
 
 ## Departments (dynamisch)
 
-Das Ticketsystem nutzt keine festen Departments mehr. Departments werden manuell per Slash-Commands verwaltet und koennen mehrere Rollen enthalten.
+Das Ticketsystem nutzt keine festen Departments mehr. Departments werden manuell per Slash-Commands verwaltet und können mehrere Rollen enthalten.
 
 - `/department create name:<name>`
 - `/department role-add department:<name-oder-id> rolle:<rolle>`
@@ -77,6 +77,6 @@ Das Ticketsystem nutzt keine festen Departments mehr. Departments werden manuell
 Hinweise:
 
 - Tickets werden fortlaufend pro Server nummeriert.
-- Tickets koennen nur von Mitgliedern mit der konfigurierten Standard-Teamrolle geschlossen oder eskaliert werden.
+- Tickets können nur von Mitgliedern mit der konfigurierten Standard-Teamrolle geschlossen oder eskaliert werden.
 
 Optionaler manueller Start per Slash-Command: `/setup-panel`.

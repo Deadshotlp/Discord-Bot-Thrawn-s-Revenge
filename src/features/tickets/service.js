@@ -45,9 +45,9 @@ function ticketPanelEmbed() {
     .setDescription(
       [
         "Klicke auf den Button unten.",
-        "Danach waehle ein Department im Dropdown.",
-        "Anschliessend oeffnet sich das Formular fuer Titel und Beschreibung.",
-        "Nur das gewaehlte Department wird gepingt."
+        "Danach wähle ein Department im Dropdown.",
+        "Anschließend öffnet sich das Formular für Titel und Beschreibung.",
+        "Nur das gewählte Department wird gepingt."
       ].join("\n")
     );
 }
@@ -73,7 +73,7 @@ function buildDepartmentSelectRow(departments) {
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId(TICKET_DEPARTMENT_SELECT_ID)
-      .setPlaceholder("Department fuer dieses Ticket auswaehlen")
+      .setPlaceholder("Department für dieses Ticket auswählen")
       .addOptions(options)
       .setMinValues(1)
       .setMaxValues(1)
@@ -97,7 +97,7 @@ function buildTicketModal(departmentName, departmentId) {
   const descriptionInput = new TextInputBuilder()
     .setCustomId("ticket_description")
     .setLabel("Beschreibung")
-    .setPlaceholder("Beschreibe dein Anliegen moeglichst genau")
+    .setPlaceholder("Beschreibe dein Anliegen möglichst genau")
     .setStyle(TextInputStyle.Paragraph)
     .setMinLength(10)
     .setMaxLength(1000)
@@ -135,7 +135,7 @@ function createTicketControlRows(departments, currentDepartmentId) {
   const closeRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("ticket_close")
-      .setLabel("Ticket schliessen")
+      .setLabel("Ticket schließen")
       .setStyle(ButtonStyle.Danger)
   );
 
@@ -255,7 +255,7 @@ export async function handleTicketComponent(interaction, guildSettingsRepository
     }
 
     await interaction.reply({
-      content: "Waehle das Department fuer dein Ticket:",
+      content: "Wähle das Department für dein Ticket:",
       components: [buildDepartmentSelectRow(departments)],
       flags: MessageFlags.Ephemeral
     });
@@ -267,7 +267,7 @@ export async function handleTicketComponent(interaction, guildSettingsRepository
     const department = getDepartmentById(settings, selectedDepartmentId);
 
     if (!department) {
-      await respondEphemeral(interaction, "Das ausgewaehlte Department existiert nicht mehr.");
+      await respondEphemeral(interaction, "Das ausgewählte Department existiert nicht mehr.");
       return;
     }
 
@@ -278,7 +278,7 @@ export async function handleTicketComponent(interaction, guildSettingsRepository
   if (interaction.isButton() && interaction.customId === "ticket_close") {
     if (!canManageTicket(interaction.member, settings)) {
       await interaction.reply({
-        content: "Nur Mitglieder mit der Standard-Teamrolle duerfen Tickets schliessen.",
+        content: "Nur Mitglieder mit der Standard-Teamrolle dürfen Tickets schließen.",
         flags: MessageFlags.Ephemeral
       });
       return;
@@ -286,7 +286,7 @@ export async function handleTicketComponent(interaction, guildSettingsRepository
 
     await interaction.reply({ content: "Ticket wird geschlossen...", flags: MessageFlags.Ephemeral });
     await interaction.channel.delete("Ticket durch Team geschlossen").catch((error) => {
-      logger.warn("Ticket konnte nicht geloescht werden.", { guildId: interaction.guildId, error: String(error) });
+      logger.warn("Ticket konnte nicht gelöscht werden.", { guildId: interaction.guildId, error: String(error) });
     });
     return;
   }
@@ -294,7 +294,7 @@ export async function handleTicketComponent(interaction, guildSettingsRepository
   if (interaction.isStringSelectMenu() && interaction.customId === TICKET_ESCALATE_ID) {
     if (!canManageTicket(interaction.member, settings)) {
       await interaction.reply({
-        content: "Nur Mitglieder mit der Standard-Teamrolle duerfen Tickets eskalieren.",
+        content: "Nur Mitglieder mit der Standard-Teamrolle dürfen Tickets eskalieren.",
         flags: MessageFlags.Ephemeral
       });
       return;
@@ -303,7 +303,7 @@ export async function handleTicketComponent(interaction, guildSettingsRepository
     const selectedDepartmentId = interaction.values?.[0];
     const department = getDepartmentById(settings, selectedDepartmentId);
     if (!department) {
-      await respondEphemeral(interaction, "Department fuer Eskalation wurde nicht gefunden.");
+      await respondEphemeral(interaction, "Department für Eskalation wurde nicht gefunden.");
       return;
     }
 
@@ -390,7 +390,7 @@ export async function handleTicketModal(interaction, guildSettingsRepository, lo
         ]
       }))
     ],
-    reason: `Ticket-Erstellung fuer ${interaction.user.tag}`
+    reason: `Ticket-Erstellung für ${interaction.user.tag}`
   });
 
   const departmentMention = roleMentions(roleIds);

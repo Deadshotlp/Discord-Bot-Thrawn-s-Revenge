@@ -10,7 +10,7 @@ export const setupPanelCommand = {
   async execute(interaction) {
     if (!canManageServer(interaction.member)) {
       await interaction.reply({
-        content: "Diesen Befehl duerfen nur Admins oder Mitglieder mit Server-verwalten nutzen.",
+        content: "Diesen Befehl dürfen nur Admins oder Mitglieder mit Server-verwalten nutzen.",
         flags: MessageFlags.Ephemeral
       });
       return;
@@ -18,7 +18,7 @@ export const setupPanelCommand = {
 
     if (!interaction.channel || !interaction.channel.isTextBased()) {
       await interaction.reply({
-        content: "Dieser Befehl funktioniert nur in textbasierten Kanaelen.",
+        content: "Dieser Befehl funktioniert nur in textbasierten Kanälen.",
         flags: MessageFlags.Ephemeral
       });
       return;

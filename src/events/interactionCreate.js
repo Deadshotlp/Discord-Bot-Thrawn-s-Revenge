@@ -135,7 +135,7 @@ async function safeInteractionResponse(interaction, payload, logger, context) {
 
     await interaction.reply(payload);
   } catch (error) {
-    logger.warn("Interaction-Antwort konnte nicht gesendet werden.", {
+    logger.warn("Interaktions-Antwort konnte nicht gesendet werden.", {
       guildId: interaction.guildId,
       context,
       error: String(error)
@@ -152,7 +152,7 @@ async function applyStoredSetupConfiguration(interaction, guildSettingsRepositor
   if (settings.admin_category_id) {
     try {
       settings = await provisionAdminCategoryChannels(interaction.guild, settings.admin_category_id, guildSettingsRepository);
-      resultLines.push("Log-Kategorie angewendet: Log- und Ping-Kanaele sind bereit.");
+      resultLines.push("Log-Kategorie angewendet: Log- und Ping-Kanäle sind bereit.");
     } catch (error) {
       warningLines.push(`Log-Kategorie konnte nicht angewendet werden: ${String(error)}`);
     }
@@ -164,7 +164,7 @@ async function applyStoredSetupConfiguration(interaction, guildSettingsRepositor
     settings = await ensureOnboardingChannels(interaction.guild, guildSettingsRepository, logger);
     resultLines.push("Willkommen- und Regeln-Setup wurde abgeglichen.");
   } catch (error) {
-    warningLines.push(`Onboarding konnte nicht vollstaendig angewendet werden: ${String(error)}`);
+    warningLines.push(`Onboarding konnte nicht vollständig angewendet werden: ${String(error)}`);
   }
 
   if (settings.verified_role_id) {
@@ -172,7 +172,7 @@ async function applyStoredSetupConfiguration(interaction, guildSettingsRepositor
       const visibilityResult = await applyVerifiedVisibilityToCategories(interaction.guild, settings, logger);
       resultLines.push(`Kategorie-Sichtbarkeit aktualisiert: ${visibilityResult.updated}`);
       if (visibilityResult.skipped > 0) {
-        warningLines.push(`Kategorien ohne ausreichende Rechte uebersprungen: ${visibilityResult.skipped}`);
+        warningLines.push(`Kategorien ohne ausreichende Rechte übersprungen: ${visibilityResult.skipped}`);
       }
     } catch (error) {
       warningLines.push(`Verifiziert-Sichtbarkeit konnte nicht angewendet werden: ${String(error)}`);
@@ -182,7 +182,7 @@ async function applyStoredSetupConfiguration(interaction, guildSettingsRepositor
   }
 
   if (!settings.standard_team_role_id) {
-    warningLines.push("Standard-Teamrolle nicht gesetzt. Ohne diese Rolle kann niemand Tickets schliessen oder eskalieren.");
+    warningLines.push("Standard-Teamrolle nicht gesetzt. Ohne diese Rolle kann niemand Tickets schließen oder eskalieren.");
   }
 
   if (settings.ticket_panel_channel_id) {
@@ -230,7 +230,7 @@ export async function handleInteractionCreate(interaction) {
 
       if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({
-          content: "Beim Ausfuehren des Befehls ist ein Fehler aufgetreten.",
+          content: "Beim Ausführen des Befehls ist ein Fehler aufgetreten.",
           flags: MessageFlags.Ephemeral
         });
       }
@@ -259,7 +259,7 @@ export async function handleInteractionCreate(interaction) {
 
       if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({
-          content: "Ticket konnte nicht erstellt werden. Bitte pruefe Bot-Rechte und Kanalzugriff.",
+          content: "Ticket konnte nicht erstellt werden. Bitte prüfe Bot-Rechte und Kanalzugriff.",
           flags: MessageFlags.Ephemeral
         });
       }
@@ -279,7 +279,7 @@ export async function handleInteractionCreate(interaction) {
 
       if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({
-          content: "Ticket-Aktion fehlgeschlagen. Bitte pruefe Bot-Rechte und Kanalzugriff.",
+          content: "Ticket-Aktion fehlgeschlagen. Bitte prüfe Bot-Rechte und Kanalzugriff.",
           flags: MessageFlags.Ephemeral
         });
       }
@@ -294,7 +294,7 @@ export async function handleInteractionCreate(interaction) {
 
   if (!canManageServer(interaction.member)) {
     await interaction.reply({
-      content: "Du hast keine Berechtigung fuer das Bot-Setup.",
+      content: "Du hast keine Berechtigung für das Bot-Setup.",
       flags: MessageFlags.Ephemeral
     });
     return;
@@ -320,7 +320,7 @@ export async function handleInteractionCreate(interaction) {
       });
 
       await safeInteractionResponse(interaction, {
-        content: "Konfiguration konnte nicht angewendet werden. Bitte pruefe Bot-Rechte und Kanalzugriffe.",
+        content: "Konfiguration konnte nicht angewendet werden. Bitte prüfe Bot-Rechte und Kanalzugriffe.",
         flags: MessageFlags.Ephemeral
       }, logger, "setup-apply-failed");
     }
@@ -343,7 +343,7 @@ export async function handleInteractionCreate(interaction) {
       guildSettingsRepository.setField(interaction.guildId, config.field, selectedId);
       const replyContent = [
         `Gespeichert: ${config.field} = ${formatMention(config.mentionPrefix, selectedId)}`,
-        "Die Aenderung wird mit Konfiguration anwenden uebernommen."
+        "Die Änderung wird mit Konfiguration anwenden übernommen."
       ].join("\n");
 
       await safeInteractionResponse(interaction, {
@@ -358,7 +358,7 @@ export async function handleInteractionCreate(interaction) {
       });
 
       await safeInteractionResponse(interaction, {
-        content: "Setup konnte nicht gespeichert werden. Bitte pruefe Bot-Rechte und Kanalzugriffe.",
+        content: "Setup konnte nicht gespeichert werden. Bitte prüfe Bot-Rechte und Kanalzugriffe.",
         flags: MessageFlags.Ephemeral
       }, logger, "setup-save-failed");
     }

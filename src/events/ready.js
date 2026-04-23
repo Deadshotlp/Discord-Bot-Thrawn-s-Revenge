@@ -26,12 +26,12 @@ export async function handleReady(client) {
 
     try {
       await guild.commands.set(commandPayload);
-      logger.info("Slash-Commands fuer Guild registriert.", {
+      logger.info("Slash-Commands für Guild registriert.", {
         guildId: guild.id,
         commandCount: commandPayload.length
       });
     } catch (error) {
-      logger.warn("Slash-Commands konnten fuer Guild nicht registriert werden.", {
+      logger.warn("Slash-Commands konnten für Guild nicht registriert werden.", {
         guildId: guild.id,
         error: String(error)
       });
@@ -43,5 +43,5 @@ export async function handleReady(client) {
     });
   }
 
-  logger.info(`Guild-Konfigurationen geprueft: ${client.guilds.cache.size}`);
+  logger.info(`Guild-Konfigurationen geprüft: ${client.guilds.cache.size}`);
 }

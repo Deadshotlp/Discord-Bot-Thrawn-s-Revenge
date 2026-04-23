@@ -79,11 +79,11 @@ export async function provisionAdminCategoryChannels(guild, categoryId, guildSet
     || (await guild.channels.fetch(categoryId).catch(() => null));
 
   if (!category || category.type !== ChannelType.GuildCategory) {
-    throw new Error("Die ausgewaehlte Log-Kategorie wurde nicht gefunden.");
+    throw new Error("Die ausgewählte Log-Kategorie wurde nicht gefunden.");
   }
 
   if (!category.viewable) {
-    throw new Error("Bot hat keinen Zugriff auf die ausgewaehlte Log-Kategorie.");
+    throw new Error("Bot hat keinen Zugriff auf die ausgewählte Log-Kategorie.");
   }
 
   const updates = {

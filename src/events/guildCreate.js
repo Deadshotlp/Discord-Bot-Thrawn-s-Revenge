@@ -79,9 +79,9 @@ async function ensureSetupChannel(guild, setupChannelName) {
   return guild.channels.create({
     name: setupChannelName,
     type: ChannelType.GuildText,
-    topic: "Bot-Konfiguration fuer Rollen, Kanaele und Feature-Setup",
+    topic: "Bot-Konfiguration für Rollen, Kanäle und Feature-Setup",
     permissionOverwrites,
-    reason: "Automatischer Setup-Channel fuer Bot-Konfiguration"
+    reason: "Automatischer Setup-Channel für Bot-Konfiguration"
   });
 }
 

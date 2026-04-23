@@ -14,10 +14,10 @@ function createInfoEmbed(guildName) {
     .setTitle("Bot-Setup")
     .setDescription(
       [
-        `Dieses Setup konfiguriert den Bot fuer **${guildName}**.`,
-        "Waehle unten die Kanaele und Rollen aus.",
-        "Aenderungen werden erst mit dem Button \"Konfiguration anwenden\" aktiv umgesetzt.",
-        "Nur Admins oder Mitglieder mit Server-verwalten duerfen diese Werte aendern."
+        `Dieses Setup konfiguriert den Bot für **${guildName}**.`,
+        "Wähle unten die Kanäle und Rollen aus.",
+        "Änderungen werden erst mit dem Button \"Konfiguration anwenden\" aktiv umgesetzt.",
+        "Nur Admins oder Mitglieder mit Server-verwalten dürfen diese Werte ändern."
       ].join("\n")
     );
 }
@@ -26,21 +26,21 @@ function createChannelEmbed() {
   return new EmbedBuilder()
     .setColor(0x1f6feb)
     .setTitle("1) Kanal-Konfiguration")
-    .setDescription("Definiere Welcome, Log-Kategorie, Ticket-Panel und Support-Warteraum. Log-Kanaele werden automatisch erstellt.");
+    .setDescription("Definiere Welcome, Log-Kategorie, Ticket-Panel und Support-Warteraum. Log-Kanäle werden automatisch erstellt.");
 }
 
 function createRoleEmbed() {
   return new EmbedBuilder()
     .setColor(0xb45f06)
     .setTitle("2) Rollen-Konfiguration")
-    .setDescription("Definiere Verifiziert-Rolle und Standard-Teamrolle (fuer Ticket schliessen/eskalieren). Departments verwaltest du manuell mit /department.");
+    .setDescription("Definiere Verifiziert-Rolle und Standard-Teamrolle (für Ticket schließen/eskalieren). Departments verwaltest du manuell mit /department.");
 }
 
 function createChannelRows() {
   const adminCategoryRow = new ActionRowBuilder().addComponents(
     new ChannelSelectMenuBuilder()
       .setCustomId("setup_channel_admin_category")
-      .setPlaceholder("Log-Kategorie auswaehlen (erstellt Log- und Ping-Kanaele)")
+      .setPlaceholder("Log-Kategorie auswählen (erstellt Log- und Ping-Kanäle)")
       .addChannelTypes(ChannelType.GuildCategory)
       .setMinValues(1)
       .setMaxValues(1)
@@ -49,7 +49,7 @@ function createChannelRows() {
   const welcomeRow = new ActionRowBuilder().addComponents(
     new ChannelSelectMenuBuilder()
       .setCustomId("setup_channel_welcome")
-      .setPlaceholder("Willkommens-Channel auswaehlen")
+      .setPlaceholder("Willkommens-Channel auswählen")
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
       .setMinValues(1)
       .setMaxValues(1)
@@ -58,7 +58,7 @@ function createChannelRows() {
   const ticketPanelRow = new ActionRowBuilder().addComponents(
     new ChannelSelectMenuBuilder()
       .setCustomId("setup_channel_ticket_panel")
-      .setPlaceholder("Ticket-Panel-Channel auswaehlen")
+      .setPlaceholder("Ticket-Panel-Channel auswählen")
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
       .setMinValues(1)
       .setMaxValues(1)
@@ -67,7 +67,7 @@ function createChannelRows() {
   const supportWaitingRow = new ActionRowBuilder().addComponents(
     new ChannelSelectMenuBuilder()
       .setCustomId("setup_channel_support_waiting")
-      .setPlaceholder("Support-Warteraum (Voice) auswaehlen")
+      .setPlaceholder("Support-Warteraum (Voice) auswählen")
       .addChannelTypes(ChannelType.GuildVoice, ChannelType.GuildStageVoice)
       .setMinValues(1)
       .setMaxValues(1)
@@ -80,7 +80,7 @@ function createRoleRows() {
   const verifiedRow = new ActionRowBuilder().addComponents(
     new RoleSelectMenuBuilder()
       .setCustomId("setup_role_verified")
-      .setPlaceholder("Verifiziert-Rolle auswaehlen")
+      .setPlaceholder("Verifiziert-Rolle auswählen")
       .setMinValues(1)
       .setMaxValues(1)
   );
@@ -88,7 +88,7 @@ function createRoleRows() {
   const standardTeamRow = new ActionRowBuilder().addComponents(
     new RoleSelectMenuBuilder()
       .setCustomId("setup_role_team_standard")
-      .setPlaceholder("Standard-Teamrolle auswaehlen (Ticket schliessen/eskalieren)")
+      .setPlaceholder("Standard-Teamrolle auswählen (Ticket schließen/eskalieren)")
       .setMinValues(1)
       .setMaxValues(1)
   );

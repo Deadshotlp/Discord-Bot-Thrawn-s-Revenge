@@ -15,8 +15,8 @@ const RULES_CHANNEL_NAME = "regeln";
 const DEFAULT_RULES_TEXT = [
   "1) Behandle alle Mitglieder respektvoll und sachlich.",
   "2) Keine Beleidigungen, Diskriminierung oder toxisches Verhalten.",
-  "3) Kein Spam, keine Werbung und keine unerwuenschten Inhalte.",
-  "4) Nutze Tickets und Supportkanaele nur fuer echte Anliegen.",
+  "3) Kein Spam, keine Werbung und keine unerwünschten Inhalte.",
+  "4) Nutze Tickets und Supportkanäle nur für echte Anliegen.",
   "5) Folge den Anweisungen des Teams und beachte Kanalregeln."
 ].join("\n");
 
@@ -28,7 +28,7 @@ function createWelcomeEmbed(guildName) {
       [
         "Willkommen in unserer Community.",
         "Bitte lies zuerst das Regelwerk im Kanal #regeln.",
-        "Danach kannst du dich dort ueber den Verifizierungsbutton freischalten."
+        "Danach kannst du dich dort über den Verifizierungsbutton freischalten."
       ].join("\n")
     );
 }
@@ -38,7 +38,7 @@ function createRulesEmbed(guildName, rulesText) {
     .setColor(0xb45f06)
     .setTitle(`Regelwerk und Verifizierung - ${guildName}`)
     .setDescription(rulesText || DEFAULT_RULES_TEXT)
-    .setFooter({ text: "Mit Klick auf den Button bestaetigst du das Regelwerk." });
+    .setFooter({ text: "Mit Klick auf den Button bestätigst du das Regelwerk." });
 }
 
 function createRulesActionRows() {
@@ -112,7 +112,7 @@ function buildVerifiedCategoryOverwrites(guild, verifiedRoleId) {
   return overwrites;
 }
 
-async function resolveTextChannel(guild, channelId) {
+async function resolveChannelByTypes(guild, channelId, allowedTypes = [ChannelType.GuildText]) {
   if (!channelId) {
     return null;
   }
@@ -120,7 +120,7 @@ async function resolveTextChannel(guild, channelId) {
   const channel = guild.channels.cache.get(channelId)
     || (await guild.channels.fetch(channelId).catch(() => null));
 
-  if (!channel || channel.type !== ChannelType.GuildText) {
+  if (!channel || !allowedTypes.includes(channel.type)) {
     return null;
   }
 
@@ -136,12 +136,29 @@ async function canManageChannels(guild) {
   return me.permissions.has(PermissionFlagsBits.ManageChannels);
 }
 
-async function ensurePublicTextChannel(guild, preferredChannelId, name, topic, logger) {
-  let channel = await resolveTextChannel(guild, preferredChannelId);
+async function ensurePublicTextChannel(
+  guild,
+  preferredChannelId,
+  name,
+  topic,
+  logger,
+  allowedTypes = [ChannelType.GuildText],
+  strictPreferredChannel = false
+) {
+  let channel = await resolveChannelByTypes(guild, preferredChannelId, allowedTypes);
+
+  if (preferredChannelId && !channel && strictPreferredChannel) {
+    logger.warn("Konfigurierter Onboarding-Kanal konnte nicht aufgelöst werden.", {
+      guildId: guild.id,
+      configuredChannelId: preferredChannelId,
+      channelName: name
+    });
+    return null;
+  }
 
   if (!channel) {
     channel = guild.channels.cache.find(
-      (candidate) => candidate.type === ChannelType.GuildText && candidate.name === name
+      (candidate) => allowedTypes.includes(candidate.type) && candidate.name === name
     ) || null;
   }
 
@@ -149,7 +166,7 @@ async function ensurePublicTextChannel(guild, preferredChannelId, name, topic, l
 
   if (channel) {
     if (!channel.manageable) {
-      logger.warn("Onboarding-Kanal ist nicht verwaltbar, bestehender Kanal wird unveraendert genutzt.", {
+      logger.warn("Onboarding-Kanal ist nicht verwaltbar, bestehender Kanal wird unverändert genutzt.", {
         guildId: guild.id,
         channelId: channel.id,
         channelName: channel.name
@@ -157,12 +174,8 @@ async function ensurePublicTextChannel(guild, preferredChannelId, name, topic, l
       return channel;
     }
 
-    if (channel.parentId) {
-      await channel.setParent(null, { lockPermissions: false }).catch(() => null);
-    }
-
     await channel.setTopic(topic).catch(() => null);
-    await channel.permissionOverwrites.set(permissionOverwrites, "Onboarding-Kanal oeffentlich setzen");
+    await channel.permissionOverwrites.set(permissionOverwrites, "Onboarding-Kanal öffentlich setzen");
     return channel;
   }
 
@@ -189,7 +202,7 @@ export async function ensureOnboardingChannels(guild, guildSettingsRepository, l
 
   const manageChannelsAvailable = await canManageChannels(guild);
   if (!manageChannelsAvailable && !settings.welcome_channel_id && !settings.rules_channel_id) {
-    logger.warn("Onboarding uebersprungen: Bot hat keine Rechte zum Verwalten von Kanaelen.", {
+    logger.warn("Onboarding übersprungen: Bot hat keine Rechte zum Verwalten von Kanälen.", {
       guildId: guild.id
     });
     return settings;
@@ -199,8 +212,10 @@ export async function ensureOnboardingChannels(guild, guildSettingsRepository, l
     guild,
     settings.welcome_channel_id,
     WELCOME_CHANNEL_NAME,
-    "Startpunkt fuer neue Mitglieder",
-    logger
+    "Startpunkt für neue Mitglieder",
+    logger,
+    [ChannelType.GuildText, ChannelType.GuildAnnouncement],
+    true
   );
 
   const rulesChannel = await ensurePublicTextChannel(
@@ -231,7 +246,10 @@ export async function ensureOnboardingChannels(guild, guildSettingsRepository, l
 }
 
 export async function ensureWelcomeMessage(guild, settings, logger) {
-  const welcomeChannel = await resolveTextChannel(guild, settings?.welcome_channel_id);
+  const welcomeChannel = await resolveChannelByTypes(guild, settings?.welcome_channel_id, [
+    ChannelType.GuildText,
+    ChannelType.GuildAnnouncement
+  ]);
   if (!welcomeChannel) {
     return;
   }
@@ -260,7 +278,7 @@ export async function ensureWelcomeMessage(guild, settings, logger) {
 }
 
 export async function ensureRulesMessage(guild, settings, guildSettingsRepository, logger) {
-  const rulesChannel = await resolveTextChannel(guild, settings?.rules_channel_id);
+  const rulesChannel = await resolveChannelByTypes(guild, settings?.rules_channel_id, [ChannelType.GuildText]);
   if (!rulesChannel) {
     return;
   }
@@ -348,7 +366,7 @@ export async function applyVerifiedVisibilityToCategories(guild, settings, logge
     try {
       await channel.permissionOverwrites.set(
         buildVerifiedCategoryOverwrites(guild, verifiedRoleId),
-        "Kategorie auf verifizierte Nutzer beschraenken"
+        "Kategorie auf verifizierte Nutzer beschränken"
       );
       updatedCount += 1;
     } catch (error) {
@@ -398,7 +416,7 @@ export async function handleVerificationButton(interaction, guildSettingsReposit
     await interaction.member.roles.add(role, "Regelwerk akzeptiert");
   } catch {
     await interaction.reply({
-      content: "Verifizierung fehlgeschlagen. Bitte pruefe die Rollen-Hierarchie und Bot-Rechte.",
+      content: "Verifizierung fehlgeschlagen. Bitte prüfe die Rollen-Hierarchie und Bot-Rechte.",
       flags: MessageFlags.Ephemeral
     });
     return;

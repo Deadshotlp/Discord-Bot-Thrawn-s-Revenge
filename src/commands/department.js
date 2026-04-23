@@ -12,7 +12,7 @@ import { canManageServer } from "../utils/permissions.js";
 export const departmentCommand = {
   data: new SlashCommandBuilder()
     .setName("department")
-    .setDescription("Departments fuer Tickets verwalten")
+    .setDescription("Departments für Tickets verwalten")
     .addSubcommand((subcommand) =>
       subcommand
         .setName("create")
@@ -28,7 +28,7 @@ export const departmentCommand = {
     .addSubcommand((subcommand) =>
       subcommand
         .setName("delete")
-        .setDescription("Loescht ein Department")
+        .setDescription("Löscht ein Department")
         .addStringOption((option) =>
           option
             .setName("department")
@@ -40,7 +40,7 @@ export const departmentCommand = {
     .addSubcommand((subcommand) =>
       subcommand
         .setName("role-add")
-        .setDescription("Fuegt einem Department eine Rolle hinzu")
+        .setDescription("Fügt einem Department eine Rolle hinzu")
         .addStringOption((option) =>
           option
             .setName("department")
@@ -82,7 +82,7 @@ export const departmentCommand = {
   async execute(interaction) {
     if (!canManageServer(interaction.member)) {
       await interaction.reply({
-        content: "Diesen Befehl duerfen nur Admins oder Mitglieder mit Server-verwalten nutzen.",
+        content: "Diesen Befehl dürfen nur Admins oder Mitglieder mit Server-verwalten nutzen.",
         flags: MessageFlags.Ephemeral
       });
       return;

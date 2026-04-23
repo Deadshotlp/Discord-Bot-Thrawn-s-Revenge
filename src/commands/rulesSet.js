@@ -21,7 +21,7 @@ export const rulesSetCommand = {
   async execute(interaction) {
     if (!canManageServer(interaction.member)) {
       await interaction.reply({
-        content: "Diesen Befehl duerfen nur Admins oder Mitglieder mit Server-verwalten nutzen.",
+        content: "Diesen Befehl dürfen nur Admins oder Mitglieder mit Server-verwalten nutzen.",
         flags: MessageFlags.Ephemeral
       });
       return;
