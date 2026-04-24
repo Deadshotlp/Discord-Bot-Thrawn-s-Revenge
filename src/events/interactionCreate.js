@@ -2,14 +2,35 @@ import { MessageFlags } from "discord.js";
 import { runEventHandlers } from "../core/moduleRuntime.js";
 
 export async function handleInteractionCreate(client, interaction) {
-  const { logger, modules, commandRegistry } = client.botContext;
+  const {
+    logger,
+    modules,
+    commandRegistry,
+    commandToModule,
+    moduleConfigStore
+  } = client.botContext;
 
   if (interaction.isChatInputCommand()) {
     const command = commandRegistry.get(interaction.commandName);
+    const moduleName = commandToModule.get(interaction.commandName);
 
     if (!command) {
       await interaction.reply({
         content: "Unbekannter Befehl.",
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
+    if (
+      interaction.inGuild()
+      && moduleName
+      && moduleName !== "setup"
+      && !command.alwaysAvailable
+      && !moduleConfigStore.isModuleEnabled(interaction.guildId, moduleName)
+    ) {
+      await interaction.reply({
+        content: `Das Modul ${moduleName} ist aktuell deaktiviert.`,
         flags: MessageFlags.Ephemeral
       });
       return;

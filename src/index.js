@@ -5,13 +5,15 @@ import {
 } from "discord.js";
 
 import { env } from "./config/env.js";
+import { ModuleConfigStore } from "./core/moduleConfigStore.js";
 import { createLogger } from "./core/logger.js";
 import { buildCommandRegistry } from "./core/moduleRuntime.js";
 import { registerEvents } from "./events/registerEvents.js";
 import { modules } from "./modules/index.js";
 
 const logger = createLogger(env.logLevel);
-const { commandRegistry, commandPayload } = buildCommandRegistry(modules);
+const moduleConfigStore = new ModuleConfigStore(modules, logger);
+const { commandRegistry, commandPayload, commandToModule } = buildCommandRegistry(modules);
 
 const client = new Client({
   intents: [
@@ -26,7 +28,9 @@ client.botContext = {
   env,
   logger,
   modules,
+  moduleConfigStore,
   commandRegistry,
+  commandToModule,
   commandPayload
 };
 

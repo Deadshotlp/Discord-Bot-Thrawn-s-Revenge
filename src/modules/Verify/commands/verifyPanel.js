@@ -1,12 +1,11 @@
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import { canManageServer } from "../../../core/permissions.js";
-import { postSetupPanel } from "../services/panel.js";
+import { postVerifyPanel, DEFAULT_VERIFY_RULES_TEXT } from "../services/panel.js";
 
-export const setupPanelCommand = {
-  alwaysAvailable: true,
+export const verifyPanelCommand = {
   data: new SlashCommandBuilder()
-    .setName("setup-panel")
-    .setDescription("Postet das Setup-Panel der modularen Basis."),
+    .setName("verify-panel")
+    .setDescription("Postet das Verify-Panel im aktuellen Kanal."),
 
   async execute({ client, interaction }) {
     if (!canManageServer(interaction.member)) {
@@ -25,10 +24,15 @@ export const setupPanelCommand = {
       return;
     }
 
-    await postSetupPanel(interaction.channel, client);
+    const verifyState = interaction.inGuild()
+      ? client.botContext.moduleConfigStore.getModuleState(interaction.guildId, "verify")
+      : null;
+
+    const rulesText = verifyState?.config?.rulesText || DEFAULT_VERIFY_RULES_TEXT;
+    await postVerifyPanel(interaction.channel, rulesText);
 
     await interaction.reply({
-      content: "Setup-Modulverwaltung wurde gepostet.",
+      content: "Verify-Panel wurde gepostet.",
       flags: MessageFlags.Ephemeral
     });
   }

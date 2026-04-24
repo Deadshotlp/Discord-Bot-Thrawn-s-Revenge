@@ -1,7 +1,7 @@
 import { runEventHandlers } from "../core/moduleRuntime.js";
 
 export async function handleReady(client) {
-  const { logger, commandPayload, modules } = client.botContext;
+  const { logger, commandPayload, modules, moduleConfigStore } = client.botContext;
 
   logger.info(`Bot ist online als ${client.user.tag}`);
 
@@ -20,6 +20,8 @@ export async function handleReady(client) {
   }
 
   for (const guild of client.guilds.cache.values()) {
+    moduleConfigStore.ensureGuild(guild.id);
+
     try {
       await guild.commands.set(commandPayload);
       logger.info("Guild-Commands registriert", {
