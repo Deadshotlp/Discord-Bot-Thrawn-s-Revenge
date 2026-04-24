@@ -16,7 +16,7 @@ import {
   SETUP_REFRESH_ID,
   SETUP_TOGGLE_PREFIX
 } from "./services/panel.js";
-import { ensureVerifyDefaults } from "../Verify/services/provisioning.js";
+import { ensureVerifyDefaults } from "../verify/services/provisioning.js";
 
 function extractSnowflake(raw) {
   const text = String(raw || "").trim();

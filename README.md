@@ -23,7 +23,7 @@ src/
     guildCreate.js
   modules/
     index.js
-    Verify/
+    verify/
       index.js
       commands/
         verifyPanel.js
