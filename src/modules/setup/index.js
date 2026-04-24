@@ -16,6 +16,13 @@ import {
   SETUP_REFRESH_ID,
   SETUP_TOGGLE_PREFIX
 } from "./services/panel.js";
+import { ensureSupportDefaults } from "../support/services/provisioning.js";
+import {
+  ensureDefaultDepartment,
+  ensureValidDefaultDepartmentId,
+  extractRoleIds,
+  SUPPORT_DEFAULT_DEPARTMENT_ID
+} from "../support/services/config.js";
 import { ensureVerifyDefaults } from "../verify/services/provisioning.js";
 import { VERIFY_RULES_TEXT_MAX_LENGTH } from "../verify/services/panel.js";
 
@@ -78,6 +85,87 @@ function buildVerifyConfigModal(verifyState) {
   return modal;
 }
 
+function buildSupportConfigModal(supportState, env) {
+  const config = supportState?.config || {};
+  const departments = ensureDefaultDepartment(config.departments, env.supportDefaultDepartmentName, []);
+  const defaultDepartmentId = ensureValidDefaultDepartmentId(
+    departments,
+    config.defaultDepartmentId || SUPPORT_DEFAULT_DEPARTMENT_ID
+  );
+  const defaultDepartment = departments.find((department) => department.id === defaultDepartmentId) || departments[0];
+
+  const modal = new ModalBuilder()
+    .setCustomId(`${SETUP_CONFIG_MODAL_PREFIX}support`)
+    .setTitle("Support-Modul konfigurieren");
+
+  const waitingChannelInput = new TextInputBuilder()
+    .setCustomId("support_waiting_channel_id")
+    .setLabel("Support Warteraum (Voice ID)")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(false)
+    .setPlaceholder("Leer lassen = automatisch erstellen");
+
+  if (config.waitingChannelId) {
+    waitingChannelInput.setValue(config.waitingChannelId);
+  }
+
+  const managementChannelInput = new TextInputBuilder()
+    .setCustomId("support_management_channel_id")
+    .setLabel("Support Verwaltung (Text ID)")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(false)
+    .setPlaceholder("Leer lassen = automatisch erstellen");
+
+  if (config.managementChannelId) {
+    managementChannelInput.setValue(config.managementChannelId);
+  }
+
+  const talkCategoryInput = new TextInputBuilder()
+    .setCustomId("support_talk_category_id")
+    .setLabel("Talk Kategorie (ID)")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(false)
+    .setPlaceholder("Leer lassen = automatisch erstellen");
+
+  if (config.talkCategoryId) {
+    talkCategoryInput.setValue(config.talkCategoryId);
+  }
+
+  const defaultDepartmentNameInput = new TextInputBuilder()
+    .setCustomId("support_default_department_name")
+    .setLabel("Default Department Name")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(false)
+    .setPlaceholder("Name für Department beim Warteraum")
+    .setMaxLength(80);
+
+  if (defaultDepartment?.name) {
+    defaultDepartmentNameInput.setValue(defaultDepartment.name.slice(0, 80));
+  }
+
+  const defaultDepartmentRolesInput = new TextInputBuilder()
+    .setCustomId("support_default_department_roles")
+    .setLabel("Default Department Rollen")
+    .setStyle(TextInputStyle.Paragraph)
+    .setRequired(false)
+    .setPlaceholder("Mehrere Rollen-IDs oder Erwähnungen")
+    .setMaxLength(400);
+
+  if (Array.isArray(defaultDepartment?.roleIds) && defaultDepartment.roleIds.length > 0) {
+    defaultDepartmentRolesInput.setValue(defaultDepartment.roleIds.join(", ").slice(0, 400));
+  }
+
+  modal.addComponents(
+    new ActionRowBuilder().addComponents(waitingChannelInput),
+    new ActionRowBuilder().addComponents(managementChannelInput),
+    new ActionRowBuilder().addComponents(talkCategoryInput),
+    new ActionRowBuilder().addComponents(defaultDepartmentNameInput),
+    new ActionRowBuilder().addComponents(defaultDepartmentRolesInput)
+  );
+
+  return modal;
+}
+
 async function handleSetupInteraction({ client, interaction }) {
   if (!interaction.inGuild()) {
     return;
@@ -118,8 +206,14 @@ async function handleSetupInteraction({ client, interaction }) {
     const nextEnabled = !currentState.enabled;
     moduleConfigStore.setModuleEnabled(interaction.guildId, moduleName, nextEnabled);
 
-    if (moduleName === "verify" && nextEnabled) {
-      await ensureVerifyDefaults(client, interaction.guild);
+    if (nextEnabled) {
+      if (moduleName === "verify") {
+        await ensureVerifyDefaults(client, interaction.guild);
+      }
+
+      if (moduleName === "support") {
+        await ensureSupportDefaults(client, interaction.guild);
+      }
     }
 
     await interaction.update(buildSetupPanelPayload(client, interaction.guildId));
@@ -129,6 +223,18 @@ async function handleSetupInteraction({ client, interaction }) {
   if (isConfigButton) {
     const moduleName = interaction.customId.slice(SETUP_CONFIG_PREFIX.length);
 
+    if (moduleName === "verify") {
+      const verifyState = moduleConfigStore.getModuleState(interaction.guildId, "verify");
+      await interaction.showModal(buildVerifyConfigModal(verifyState));
+      return;
+    }
+
+    if (moduleName === "support") {
+      const supportState = moduleConfigStore.getModuleState(interaction.guildId, "support");
+      await interaction.showModal(buildSupportConfigModal(supportState, client.botContext.env));
+      return;
+    }
+
     if (moduleName !== "verify") {
       await interaction.reply({
         content: `Für ${moduleName} gibt es aktuell keine Detail-Konfiguration.`,
@@ -136,10 +242,6 @@ async function handleSetupInteraction({ client, interaction }) {
       });
       return;
     }
-
-    const verifyState = moduleConfigStore.getModuleState(interaction.guildId, "verify");
-    await interaction.showModal(buildVerifyConfigModal(verifyState));
-    return;
   }
 
   if (isRefreshButton) {
@@ -150,40 +252,100 @@ async function handleSetupInteraction({ client, interaction }) {
   if (isConfigModal) {
     const moduleName = interaction.customId.slice(SETUP_CONFIG_MODAL_PREFIX.length);
 
-    if (moduleName !== "verify") {
+    if (moduleName === "verify") {
+      const roleId = extractSnowflake(interaction.fields.getTextInputValue("verify_role_id"));
+      const channelId = extractSnowflake(interaction.fields.getTextInputValue("verify_channel_id"));
+      const rulesText = interaction.fields
+        .getTextInputValue("verify_rules_text")
+        ?.trim()
+        ?.slice(0, VERIFY_RULES_TEXT_MAX_LENGTH);
+
+      const verifyState = moduleConfigStore.getModuleState(interaction.guildId, "verify");
+      moduleConfigStore.setModuleConfig(interaction.guildId, "verify", {
+        roleId,
+        channelId,
+        rulesText,
+        panelMessageId: verifyState?.config?.panelMessageId || ""
+      });
+
+      if (moduleConfigStore.isModuleEnabled(interaction.guildId, "verify")) {
+        await ensureVerifyDefaults(client, interaction.guild);
+      }
+
       await interaction.reply({
-        content: `Unbekannte Konfiguration: ${moduleName}`,
+        content: [
+          "Verify-Konfiguration gespeichert.",
+          roleId ? `Rolle: <@&${roleId}>` : "Rolle: automatisch",
+          channelId ? `Channel: <#${channelId}>` : "Channel: automatisch",
+          rulesText ? "Regeltext: individuell" : "Regeltext: Standard"
+        ].join("\n"),
         flags: MessageFlags.Ephemeral
       });
       return;
     }
 
-    const roleId = extractSnowflake(interaction.fields.getTextInputValue("verify_role_id"));
-    const channelId = extractSnowflake(interaction.fields.getTextInputValue("verify_channel_id"));
-    const rulesText = interaction.fields
-      .getTextInputValue("verify_rules_text")
-      ?.trim()
-      ?.slice(0, VERIFY_RULES_TEXT_MAX_LENGTH);
+    if (moduleName === "support") {
+      const waitingChannelId = extractSnowflake(interaction.fields.getTextInputValue("support_waiting_channel_id"));
+      const managementChannelId = extractSnowflake(interaction.fields.getTextInputValue("support_management_channel_id"));
+      const talkCategoryId = extractSnowflake(interaction.fields.getTextInputValue("support_talk_category_id"));
+      const defaultDepartmentName = interaction.fields
+        .getTextInputValue("support_default_department_name")
+        ?.trim()
+        ?.slice(0, 80);
+      const defaultDepartmentRoleIds = extractRoleIds(
+        interaction.fields.getTextInputValue("support_default_department_roles") || ""
+      );
 
-    const verifyState = moduleConfigStore.getModuleState(interaction.guildId, "verify");
-    moduleConfigStore.setModuleConfig(interaction.guildId, "verify", {
-      roleId,
-      channelId,
-      rulesText,
-      panelMessageId: verifyState?.config?.panelMessageId || ""
-    });
+      const supportState = moduleConfigStore.getModuleState(interaction.guildId, "support");
+      const currentConfig = supportState?.config || {};
 
-    if (moduleConfigStore.isModuleEnabled(interaction.guildId, "verify")) {
-      await ensureVerifyDefaults(client, interaction.guild);
+      const departments = ensureDefaultDepartment(
+        currentConfig.departments,
+        defaultDepartmentName || client.botContext.env.supportDefaultDepartmentName,
+        defaultDepartmentRoleIds
+      );
+
+      const defaultDepartment = departments.find((department) => department.id === SUPPORT_DEFAULT_DEPARTMENT_ID);
+      if (defaultDepartment) {
+        defaultDepartment.name = defaultDepartmentName || defaultDepartment.name;
+        defaultDepartment.roleIds = defaultDepartmentRoleIds;
+      }
+
+      const defaultDepartmentId = ensureValidDefaultDepartmentId(
+        departments,
+        currentConfig.defaultDepartmentId
+      );
+
+      moduleConfigStore.setModuleConfig(interaction.guildId, "support", {
+        ...currentConfig,
+        waitingChannelId,
+        managementChannelId,
+        talkCategoryId,
+        departments,
+        defaultDepartmentId,
+        transcriptTextChannelId: currentConfig.transcriptTextChannelId || managementChannelId || ""
+      });
+
+      if (moduleConfigStore.isModuleEnabled(interaction.guildId, "support")) {
+        await ensureSupportDefaults(client, interaction.guild);
+      }
+
+      await interaction.reply({
+        content: [
+          "Support-Konfiguration gespeichert.",
+          waitingChannelId ? `Warteraum: <#${waitingChannelId}>` : "Warteraum: automatisch",
+          managementChannelId ? `Verwaltung: <#${managementChannelId}>` : "Verwaltung: automatisch",
+          talkCategoryId ? `Talk-Kategorie: ${talkCategoryId}` : "Talk-Kategorie: automatisch",
+          `Default Department: ${defaultDepartment?.name || defaultDepartmentName || client.botContext.env.supportDefaultDepartmentName}`,
+          defaultDepartmentRoleIds.length > 0 ? "Department-Rollen: gesetzt" : "Department-Rollen: keine"
+        ].join("\n"),
+        flags: MessageFlags.Ephemeral
+      });
+      return;
     }
 
     await interaction.reply({
-      content: [
-        "Verify-Konfiguration gespeichert.",
-        roleId ? `Rolle: <@&${roleId}>` : "Rolle: automatisch",
-        channelId ? `Channel: <#${channelId}>` : "Channel: automatisch",
-        rulesText ? "Regeltext: individuell" : "Regeltext: Standard"
-      ].join("\n"),
+      content: `Unbekannte Konfiguration: ${moduleName}`,
       flags: MessageFlags.Ephemeral
     });
   }
@@ -209,6 +371,15 @@ async function handleGuildCreate({ client, guild }) {
     if (moduleConfigStore.isModuleEnabled(guild.id, "verify")) {
       await ensureVerifyDefaults(client, guild);
     }
+
+    if (moduleConfigStore.isModuleEnabled(guild.id, "support")) {
+      await ensureSupportDefaults(client, guild);
+    }
+    return;
+  }
+
+  if (moduleConfigStore.isModuleEnabled(guild.id, "support")) {
+    await ensureSupportDefaults(client, guild);
   }
 }
 

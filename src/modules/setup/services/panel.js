@@ -29,16 +29,31 @@ function getManagedModules(modules) {
 function buildStatusText(moduleName, moduleState) {
   const activeText = moduleState?.enabled ? "Eingeschaltet" : "Ausgeschaltet";
 
+  if (moduleName === "verify") {
+    const config = moduleState?.config || {};
+    return [
+      activeText,
+      `Rolle: ${toRoleMention(config.roleId)}`,
+      `Channel: ${toChannelMention(config.channelId)}`
+    ].join("\n");
+  }
+
+  if (moduleName === "support") {
+    const config = moduleState?.config || {};
+    const departments = Array.isArray(config.departments) ? config.departments : [];
+    return [
+      activeText,
+      `Warteraum: ${toChannelMention(config.waitingChannelId)}`,
+      `Verwaltung: ${toChannelMention(config.managementChannelId)}`,
+      `Departments: ${departments.length}`
+    ].join("\n");
+  }
+
   if (moduleName !== "verify") {
     return activeText;
   }
 
-  const config = moduleState?.config || {};
-  return [
-    activeText,
-    `Rolle: ${toRoleMention(config.roleId)}`,
-    `Channel: ${toChannelMention(config.channelId)}`
-  ].join("\n");
+  return activeText;
 }
 
 export function buildSetupPanelPayload(client, guildId) {
@@ -80,12 +95,26 @@ export function buildSetupPanelPayload(client, guildId) {
     );
   }
 
-  const configRow = new ActionRowBuilder().addComponents(
+  const configRow = new ActionRowBuilder();
+  configRow.addComponents(
     new ButtonBuilder()
       .setCustomId(`${SETUP_CONFIG_PREFIX}verify`)
       .setLabel("Verify konfigurieren")
       .setStyle(ButtonStyle.Primary)
-      .setDisabled(!moduleConfigStore.isModuleEnabled(guildId, "verify")),
+      .setDisabled(!moduleConfigStore.isModuleEnabled(guildId, "verify"))
+  );
+
+  if (managedModules.some((moduleDef) => moduleDef.name === "support")) {
+    configRow.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`${SETUP_CONFIG_PREFIX}support`)
+        .setLabel("Support konfigurieren")
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(!moduleConfigStore.isModuleEnabled(guildId, "support"))
+    );
+  }
+
+  configRow.addComponents(
     new ButtonBuilder()
       .setCustomId(SETUP_REFRESH_ID)
       .setLabel("Status aktualisieren")
