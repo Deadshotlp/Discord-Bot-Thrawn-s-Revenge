@@ -113,7 +113,7 @@ Wenn `AUTO_SETUP_CHANNEL_ON_GUILD_JOIN=true` gesetzt ist:
 - Eskalieren (pingt ein anderes Department)
 - Fall schließen (beide werden aus Voice entfernt)
 - Transkript (erstellt eine Falldatei im Verwaltungschannel)
-- Departments können mit `/support-department` verwaltet werden (`add`, `remove`, `set-default`, `list`).
+- Departments können mit `/support-department` verwaltet werden (`add`, `add-role`, `remove`, `set-default`, `list`).
 
 ## Module erweitern
 

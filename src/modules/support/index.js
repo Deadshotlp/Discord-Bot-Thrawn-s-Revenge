@@ -450,28 +450,16 @@ async function handleTranscriptInteraction({ client, interaction, caseId }) {
   }
 
   addSupportCaseAction(interaction.guildId, caseId, `Transkript angefordert von ${interaction.user.id}`);
-
-  const talkChannel = await resolveVoiceChannel(interaction.guild, caseData.talkChannelId);
-  const me = interaction.guild.members.me || (await interaction.guild.members.fetchMe().catch(() => null));
-  let botJoinedTalk = false;
-
-  if (talkChannel && me) {
-    await me.voice.setChannel(talkChannel, "Transkript-Anforderung").then(() => {
-      botJoinedTalk = true;
-    }).catch(() => null);
-  }
-
   const config = getSupportConfig(client.botContext.moduleConfigStore, interaction.guildId, client.botContext.env);
   const department = getDepartmentById(config.departments, caseData.departmentId);
   const transcriptContent = buildCaseTranscript(caseData, department?.name || "");
-  const attachment = new AttachmentBuilder(Buffer.from(transcriptContent, "utf8"), {
-    name: `support-case-${caseId}.txt`
-  });
 
-  const targetChannelId = config.transcriptTextChannelId || config.managementChannelId;
-  const targetChannel = await resolveTextChannel(interaction.guild, targetChannelId);
+  const transcriptChannel = await resolveTextChannel(
+    interaction.guild,
+    config.transcriptTextChannelId || config.managementChannelId
+  );
 
-  if (!targetChannel) {
+  if (!transcriptChannel) {
     await interaction.reply({
       content: "Transkript-Channel ist nicht verfügbar.",
       flags: MessageFlags.Ephemeral
@@ -479,14 +467,14 @@ async function handleTranscriptInteraction({ client, interaction, caseId }) {
     return;
   }
 
-  await targetChannel.send({
+  const attachment = new AttachmentBuilder(Buffer.from(transcriptContent, "utf8"), {
+    name: `support-case-${caseId}.txt`
+  });
+
+  await transcriptChannel.send({
     content: `Transkript für Fall ${caseId} (angefordert von <@${interaction.user.id}>)`,
     files: [attachment]
   });
-
-  if (botJoinedTalk && me) {
-    await me.voice.setChannel(null, "Transkript abgeschlossen").catch(() => null);
-  }
 
   await interaction.reply({
     content: "Transkript wurde erstellt und im Verwaltungs-Channel gepostet.",

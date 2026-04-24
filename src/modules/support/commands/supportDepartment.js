@@ -41,6 +41,17 @@ export const supportDepartmentCommand = {
         .setDescription("ID des Departments")
         .setRequired(true)))
     .addSubcommand((subcommand) => subcommand
+      .setName("add-role")
+      .setDescription("Fügt Rollen zu einem Department hinzu.")
+      .addStringOption((option) => option
+        .setName("id")
+        .setDescription("ID des Departments")
+        .setRequired(true))
+      .addStringOption((option) => option
+        .setName("rollen")
+        .setDescription("Rollen-IDs oder Erwähnungen, getrennt durch Leerzeichen/Komma")
+        .setRequired(true)))
+    .addSubcommand((subcommand) => subcommand
       .setName("set-default")
       .setDescription("Setzt das Standard-Department.")
       .addStringOption((option) => option
@@ -153,6 +164,55 @@ export const supportDepartmentCommand = {
 
       await interaction.reply({
         content: `Department entfernt: ${departmentId}`,
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
+    if (subcommand === "add-role") {
+      const departmentId = interaction.options.getString("id", true).trim();
+      const roleInput = interaction.options.getString("rollen", true);
+      const roleIds = extractRoleIds(roleInput);
+
+      if (roleIds.length === 0) {
+        await interaction.reply({
+          content: "Keine gültigen Rollen-IDs gefunden.",
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+
+      const targetDepartment = departments.find((department) => department.id === departmentId);
+      if (!targetDepartment) {
+        await interaction.reply({
+          content: `Department nicht gefunden: ${departmentId}`,
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+
+      const mergedRoleIds = [...new Set([...(targetDepartment.roleIds || []), ...roleIds])];
+      const updatedDepartments = departments.map((department) => {
+        if (department.id !== departmentId) {
+          return department;
+        }
+
+        return {
+          ...department,
+          roleIds: mergedRoleIds
+        };
+      });
+
+      moduleConfigStore.setModuleConfig(interaction.guildId, "support", {
+        departments: updatedDepartments,
+        defaultDepartmentId
+      });
+
+      await interaction.reply({
+        content: [
+          `Rollen zu Department ${targetDepartment.name} (${departmentId}) hinzugefügt.`,
+          `Aktuelle Rollen: ${mergedRoleIds.map((roleId) => `<@&${roleId}>`).join(" ")}`
+        ].join("\n"),
         flags: MessageFlags.Ephemeral
       });
       return;
