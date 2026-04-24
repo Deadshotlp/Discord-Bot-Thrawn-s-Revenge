@@ -17,6 +17,7 @@ import {
   SETUP_TOGGLE_PREFIX
 } from "./services/panel.js";
 import { ensureVerifyDefaults } from "../verify/services/provisioning.js";
+import { VERIFY_RULES_TEXT_MAX_LENGTH } from "../verify/services/panel.js";
 
 function extractSnowflake(raw) {
   const text = String(raw || "").trim();
@@ -62,10 +63,10 @@ function buildVerifyConfigModal(verifyState) {
     .setStyle(TextInputStyle.Paragraph)
     .setRequired(false)
     .setPlaceholder("Leer lassen = Standard-Regeltext")
-    .setMaxLength(900);
+    .setMaxLength(VERIFY_RULES_TEXT_MAX_LENGTH);
 
   if (config.rulesText) {
-    rulesInput.setValue(config.rulesText);
+    rulesInput.setValue(String(config.rulesText).slice(0, VERIFY_RULES_TEXT_MAX_LENGTH));
   }
 
   modal.addComponents(
@@ -159,7 +160,10 @@ async function handleSetupInteraction({ client, interaction }) {
 
     const roleId = extractSnowflake(interaction.fields.getTextInputValue("verify_role_id"));
     const channelId = extractSnowflake(interaction.fields.getTextInputValue("verify_channel_id"));
-    const rulesText = interaction.fields.getTextInputValue("verify_rules_text")?.trim();
+    const rulesText = interaction.fields
+      .getTextInputValue("verify_rules_text")
+      ?.trim()
+      ?.slice(0, VERIFY_RULES_TEXT_MAX_LENGTH);
 
     const verifyState = moduleConfigStore.getModuleState(interaction.guildId, "verify");
     moduleConfigStore.setModuleConfig(interaction.guildId, "verify", {
