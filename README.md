@@ -78,6 +78,8 @@ npm run start
 - `/setup-panel`
 - `/verify-panel`
 - `/support-department`
+- `/support-department-ui`
+- `/support-ticket-panel`
 
 ## Modulverwaltung
 
@@ -110,11 +112,19 @@ Wenn `AUTO_SETUP_CHANNEL_ON_GUILD_JOIN=true` gesetzt ist:
 - Bei Join in den Support-Warteraum wird automatisch ein Fall im Verwaltungschannel erstellt.
 - Dort kann ein Supporter den Fall claimen.
 - Beim Claim werden Supporter und Nutzer in einen freien Support-Talk verschoben.
+- Über `/support-ticket-panel` kann ein Ticket-Panel gepostet werden.
+- Tickets werden über einen Button gestartet.
+- Nach dem Button wählen Nutzer das Department im Dropdown.
+- Danach geben Nutzer Ticket-Name und Beschreibung an.
+- Das Ticket-System nutzt die Department-Rollen aus dem Support-Modul für Kanalzugriff und Benachrichtigung.
+- Tickets können über den Ticket-Button auf ein anderes Department eskaliert werden.
+- Eine Ticket-Eskalation ist nur für Mitglieder des aktuellen Ticket-Departments möglich.
+- Beim Schließen eines Tickets wird automatisch ein Transkript erstellt.
 - Während des Falls gibt es Aktionen über das Panel:
 - Eskalieren (pingt ein anderes Department)
 - Fall schließen (beide werden aus Voice entfernt)
 - Transkript (erstellt eine Falldatei im Verwaltungschannel)
-- Departments können mit `/support-department` verwaltet werden (`add`, `remove`, `set-default`, `list`).
+- Departments können mit `/support-department` (Slash-Command) oder `/support-department-ui` (Interface) verwaltet werden.
 
 ## Module erweitern
 
