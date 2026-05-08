@@ -45,6 +45,7 @@ export const env = {
   supportWaitingChannelName: process.env.SUPPORT_WAITING_CHANNEL_NAME || "support-warteraum",
   supportManagementChannelName: process.env.SUPPORT_MANAGEMENT_CHANNEL_NAME || "support-verwaltung",
   supportTalkCategoryName: process.env.SUPPORT_TALK_CATEGORY_NAME || "Support Talk",
+  supportTicketCategoryName: process.env.SUPPORT_TICKET_CATEGORY_NAME || "Support Tickets",
   supportTalkChannelPrefix: process.env.SUPPORT_TALK_CHANNEL_PREFIX || "support-talk",
   supportTalkChannelCount: parseInteger(process.env.SUPPORT_TALK_CHANNEL_COUNT, 3),
   supportDefaultDepartmentName: process.env.SUPPORT_DEFAULT_DEPARTMENT_NAME || "Support",

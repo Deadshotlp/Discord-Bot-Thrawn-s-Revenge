@@ -63,14 +63,21 @@ export function buildSupportOpenCaseMessage(caseData, department) {
     ? department.roleIds.map((roleId) => `<@&${roleId}>`).join(" ")
     : "@here";
 
+  const roleIds = Array.isArray(department?.roleIds) ? department.roleIds : [];
+  const allowedMentions = roleIds.length > 0
+    ? {
+      parse: [],
+      roles: roleIds
+    }
+    : {
+      parse: ["everyone"]
+    };
+
   return {
     content: `${pingMentions}\nNeuer Supportfall von <@${caseData.userId}>`,
     embeds: [embed],
     components: [row],
-    allowedMentions: {
-      parse: [],
-      roles: Array.isArray(department?.roleIds) ? department.roleIds : []
-    }
+    allowedMentions
   };
 }
 

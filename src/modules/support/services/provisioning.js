@@ -113,6 +113,24 @@ export async function ensureSupportDefaults(client, guild) {
     }
   }
 
+  let ticketCategory = await resolveChannel(guild, currentConfig.ticketCategoryId, ChannelType.GuildCategory);
+  if (!ticketCategory) {
+    ticketCategory = await createChannel(
+      guild,
+      {
+        name: env.supportTicketCategoryName,
+        type: ChannelType.GuildCategory,
+        reason: "Kategorie für Support-Tickets"
+      },
+      logger,
+      "Support-Ticket-Kategorie"
+    );
+
+    if (ticketCategory) {
+      updates.ticketCategoryId = ticketCategory.id;
+    }
+  }
+
   const knownTalkIds = Array.isArray(currentConfig.talkChannelIds)
     ? currentConfig.talkChannelIds
     : [];

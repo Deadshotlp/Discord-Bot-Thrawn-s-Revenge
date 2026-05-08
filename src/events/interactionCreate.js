@@ -10,6 +10,42 @@ export async function handleInteractionCreate(client, interaction) {
     moduleConfigStore
   } = client.botContext;
 
+  if (interaction.isAutocomplete()) {
+    const command = commandRegistry.get(interaction.commandName);
+    const moduleName = commandToModule.get(interaction.commandName);
+
+    if (!command?.autocomplete) {
+      await interaction.respond([]).catch(() => null);
+      return;
+    }
+
+    if (
+      interaction.inGuild()
+      && moduleName
+      && moduleName !== "setup"
+      && !command.alwaysAvailable
+      && !moduleConfigStore.isModuleEnabled(interaction.guildId, moduleName)
+    ) {
+      await interaction.respond([]).catch(() => null);
+      return;
+    }
+
+    try {
+      await command.autocomplete({ client, interaction, logger, env: client.botContext.env });
+    } catch (error) {
+      logger.warn("Autocomplete fehlgeschlagen", {
+        command: interaction.commandName,
+        error: String(error)
+      });
+
+      if (!interaction.responded) {
+        await interaction.respond([]).catch(() => null);
+      }
+    }
+
+    return;
+  }
+
   if (interaction.isChatInputCommand()) {
     const command = commandRegistry.get(interaction.commandName);
     const moduleName = commandToModule.get(interaction.commandName);
