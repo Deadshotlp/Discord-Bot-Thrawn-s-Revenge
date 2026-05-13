@@ -1,6 +1,7 @@
 import { Events } from "discord.js";
 import { handleGuildCreate } from "./guildCreate.js";
 import { handleInteractionCreate } from "./interactionCreate.js";
+import { handleMessageReactionAdd } from "./messageReactionAdd.js";
 import { handleReady } from "./ready.js";
 import { handleVoiceStateUpdate } from "./voiceStateUpdate.js";
 
@@ -16,6 +17,15 @@ export function registerEvents(client) {
   client.on(Events.InteractionCreate, (interaction) => {
     handleInteractionCreate(client, interaction).catch((error) => {
       client.botContext.logger.warn("InteractionCreate-Handler fehlgeschlagen", {
+        error: String(error)
+      });
+    });
+  });
+
+  client.on(Events.MessageReactionAdd, (reaction, user) => {
+    handleMessageReactionAdd(client, reaction, user).catch((error) => {
+      client.botContext.logger.warn("MessageReactionAdd-Handler fehlgeschlagen", {
+        guildId: reaction?.message?.guild?.id || null,
         error: String(error)
       });
     });

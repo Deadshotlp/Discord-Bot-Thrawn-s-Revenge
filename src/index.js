@@ -19,9 +19,16 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.GuildVoiceStates
   ],
-  partials: [Partials.Channel, Partials.GuildMember, Partials.Message, Partials.User]
+  partials: [
+    Partials.Channel,
+    Partials.GuildMember,
+    Partials.Message,
+    Partials.Reaction,
+    Partials.User
+  ]
 });
 
 client.botContext = {

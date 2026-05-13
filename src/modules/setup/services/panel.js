@@ -9,6 +9,7 @@ export const SETUP_TOGGLE_PREFIX = "setup_toggle_module:";
 export const SETUP_CONFIG_PREFIX = "setup_config_module:";
 export const SETUP_CONFIG_MODAL_PREFIX = "setup_config_modal:";
 export const SETUP_REFRESH_ID = "setup_refresh_modules";
+const SETUP_PANEL_TITLE = "Modulverwaltung";
 
 function toLabel(moduleName) {
   return moduleName.charAt(0).toUpperCase() + moduleName.slice(1);
@@ -71,7 +72,7 @@ export function buildSetupPanelPayload(client, guildId) {
 
   const embed = new EmbedBuilder()
     .setColor(0x1f6feb)
-    .setTitle("Modulverwaltung")
+    .setTitle(SETUP_PANEL_TITLE)
     .setDescription(
       [
         "Jedes Modul kann individuell ein- oder ausgeschaltet werden.",
@@ -127,7 +128,35 @@ export function buildSetupPanelPayload(client, guildId) {
   };
 }
 
+function isSetupPanelMessage(message, botUserId) {
+  if (!message || message.author?.id !== botUserId) {
+    return false;
+  }
+
+  const title = message.embeds?.[0]?.title || "";
+  if (title !== SETUP_PANEL_TITLE) {
+    return false;
+  }
+
+  const componentIds = (message.components || [])
+    .flatMap((row) => row.components || [])
+    .map((component) => component.customId)
+    .filter(Boolean);
+
+  return componentIds.includes(SETUP_REFRESH_ID)
+    || componentIds.some((customId) => customId.startsWith(SETUP_TOGGLE_PREFIX));
+}
+
 export async function postSetupPanel(channel, client) {
   const payload = buildSetupPanelPayload(client, channel.guild.id);
+
+  const recentMessages = await channel.messages.fetch({ limit: 30 }).catch(() => null);
+  const existingPanel = recentMessages?.find((message) => isSetupPanelMessage(message, client.user?.id));
+
+  if (existingPanel) {
+    await existingPanel.edit(payload);
+    return existingPanel;
+  }
+
   return channel.send(payload);
 }
