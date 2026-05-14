@@ -39,6 +39,10 @@ function getRequiredEnv(name) {
 export const env = {
   discordToken: getRequiredEnv("DISCORD_TOKEN"),
   logLevel: process.env.LOG_LEVEL || "info",
+  youtubeApiKey: process.env.YOUTUBE_API_KEY || "",
+  twitchClientId: process.env.TWITCH_CLIENT_ID || "",
+  twitchClientSecret: process.env.TWITCH_CLIENT_SECRET || "",
+  creatorPollIntervalSeconds: parseInteger(process.env.CREATOR_POLL_INTERVAL_SECONDS, 180),
   setupChannelName: process.env.SETUP_CHANNEL_NAME || "bot-setup",
   verifyDefaultRoleName: process.env.VERIFY_DEFAULT_ROLE_NAME || "Verifiziert",
   verifyDefaultChannelName: process.env.VERIFY_DEFAULT_CHANNEL_NAME || "verify",

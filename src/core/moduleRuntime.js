@@ -42,13 +42,25 @@ export async function runEventHandlers(modules, eventName, payload, logger) {
   const guildId = payload?.guild?.id || payload?.interaction?.guildId || null;
 
   for (const { moduleName, handler } of handlers) {
-    if (store && guildId && moduleName !== "setup" && !store.isModuleEnabled(guildId, moduleName)) {
+    const handlerAlwaysAvailable = Boolean(handler?.alwaysAvailable);
+    if (
+      store
+      && guildId
+      && moduleName !== "setup"
+      && !handlerAlwaysAvailable
+      && !store.isModuleEnabled(guildId, moduleName)
+    ) {
       continue;
     }
 
     try {
       await handler(payload);
     } catch (error) {
+      const apiCode = error?.code;
+      if (apiCode === 10062 || apiCode === 40060) {
+        continue;
+      }
+
       logger.warn(`Event-Handler fehlgeschlagen (${eventName})`, {
         module: moduleName,
         error: String(error)

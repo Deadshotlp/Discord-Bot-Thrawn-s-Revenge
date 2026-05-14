@@ -50,6 +50,19 @@ function buildStatusText(moduleName, moduleState) {
     ].join("\n");
   }
 
+  if (moduleName === "content-creator") {
+    const config = moduleState?.config || {};
+    const youtubeChannels = Array.isArray(config.youtubeChannels) ? config.youtubeChannels : [];
+    const twitchChannels = Array.isArray(config.twitchChannels) ? config.twitchChannels : [];
+
+    return [
+      activeText,
+      `Notify: ${toChannelMention(config.notifyChannelId)}`,
+      `YouTube: ${youtubeChannels.length}`,
+      `Twitch: ${twitchChannels.length}`
+    ].join("\n");
+  }
+
   if (moduleName !== "verify") {
     return activeText;
   }
@@ -112,6 +125,16 @@ export function buildSetupPanelPayload(client, guildId) {
         .setLabel("Support konfigurieren")
         .setStyle(ButtonStyle.Primary)
         .setDisabled(!moduleConfigStore.isModuleEnabled(guildId, "support"))
+    );
+  }
+
+  if (managedModules.some((moduleDef) => moduleDef.name === "content-creator")) {
+    configRow.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`${SETUP_CONFIG_PREFIX}content-creator`)
+        .setLabel("Content Creator konfigurieren")
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(!moduleConfigStore.isModuleEnabled(guildId, "content-creator"))
     );
   }
 

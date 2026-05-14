@@ -25,6 +25,8 @@ import {
 } from "../support/services/config.js";
 import { ensureVerifyDefaults } from "../verify/services/provisioning.js";
 import { VERIFY_RULES_TEXT_MAX_LENGTH } from "../verify/services/panel.js";
+import { normalizeContentCreatorConfig } from "../contentCreator/services/config.js";
+import { buildContentCreatorSetupModal } from "../contentCreator/services/panel.js";
 
 function extractSnowflake(raw) {
   const text = String(raw || "").trim();
@@ -167,31 +169,32 @@ function buildSupportConfigModal(supportState, env) {
 }
 
 async function handleSetupInteraction({ client, interaction }) {
-  if (!interaction.inGuild()) {
-    return;
-  }
+  try {
+    if (!interaction.inGuild()) {
+      return;
+    }
 
-  const isToggleButton = interaction.isButton() && interaction.customId.startsWith(SETUP_TOGGLE_PREFIX);
-  const isConfigButton = interaction.isButton() && interaction.customId.startsWith(SETUP_CONFIG_PREFIX);
-  const isRefreshButton = interaction.isButton() && interaction.customId === SETUP_REFRESH_ID;
-  const isConfigModal = interaction.isModalSubmit() && interaction.customId.startsWith(SETUP_CONFIG_MODAL_PREFIX);
+    const isToggleButton = interaction.isButton() && interaction.customId.startsWith(SETUP_TOGGLE_PREFIX);
+    const isConfigButton = interaction.isButton() && interaction.customId.startsWith(SETUP_CONFIG_PREFIX);
+    const isRefreshButton = interaction.isButton() && interaction.customId === SETUP_REFRESH_ID;
+    const isConfigModal = interaction.isModalSubmit() && interaction.customId.startsWith(SETUP_CONFIG_MODAL_PREFIX);
 
-  if (!isToggleButton && !isConfigButton && !isRefreshButton && !isConfigModal) {
-    return;
-  }
+    if (!isToggleButton && !isConfigButton && !isRefreshButton && !isConfigModal) {
+      return;
+    }
 
-  if (!canManageServer(interaction.member)) {
-    await interaction.reply({
-      content: "Nur Admins oder Mitglieder mit Server-verwalten dürfen Module verwalten.",
-      flags: MessageFlags.Ephemeral
-    });
-    return;
-  }
+    if (!canManageServer(interaction.member)) {
+      await interaction.reply({
+        content: "Nur Admins oder Mitglieder mit Server-verwalten dürfen Module verwalten.",
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
 
-  const { moduleConfigStore } = client.botContext;
-  moduleConfigStore.ensureGuild(interaction.guildId);
+    const { moduleConfigStore } = client.botContext;
+    moduleConfigStore.ensureGuild(interaction.guildId);
 
-  if (isToggleButton) {
+    if (isToggleButton) {
     const moduleName = interaction.customId.slice(SETUP_TOGGLE_PREFIX.length);
     const currentState = moduleConfigStore.getModuleState(interaction.guildId, moduleName);
 
@@ -217,10 +220,10 @@ async function handleSetupInteraction({ client, interaction }) {
     }
 
     await interaction.update(buildSetupPanelPayload(client, interaction.guildId));
-    return;
-  }
+      return;
+    }
 
-  if (isConfigButton) {
+    if (isConfigButton) {
     const moduleName = interaction.customId.slice(SETUP_CONFIG_PREFIX.length);
 
     if (moduleName === "verify") {
@@ -235,6 +238,12 @@ async function handleSetupInteraction({ client, interaction }) {
       return;
     }
 
+      if (moduleName === "content-creator") {
+        const contentState = moduleConfigStore.getModuleState(interaction.guildId, "content-creator");
+        await interaction.showModal(buildContentCreatorSetupModal(normalizeContentCreatorConfig(contentState?.config)));
+        return;
+      }
+
     if (moduleName !== "verify") {
       await interaction.reply({
         content: `Für ${moduleName} gibt es aktuell keine Detail-Konfiguration.`,
@@ -242,14 +251,14 @@ async function handleSetupInteraction({ client, interaction }) {
       });
       return;
     }
-  }
+    }
 
-  if (isRefreshButton) {
-    await interaction.update(buildSetupPanelPayload(client, interaction.guildId));
-    return;
-  }
+    if (isRefreshButton) {
+      await interaction.update(buildSetupPanelPayload(client, interaction.guildId));
+      return;
+    }
 
-  if (isConfigModal) {
+    if (isConfigModal) {
     const moduleName = interaction.customId.slice(SETUP_CONFIG_MODAL_PREFIX.length);
 
     if (moduleName === "verify") {
@@ -344,10 +353,18 @@ async function handleSetupInteraction({ client, interaction }) {
       return;
     }
 
-    await interaction.reply({
-      content: `Unbekannte Konfiguration: ${moduleName}`,
-      flags: MessageFlags.Ephemeral
-    });
+      await interaction.reply({
+        content: `Unbekannte Konfiguration: ${moduleName}`,
+        flags: MessageFlags.Ephemeral
+      });
+    }
+  } catch (error) {
+    const apiCode = error?.code;
+    if (apiCode === 10062 || apiCode === 40060) {
+      return;
+    }
+
+    throw error;
   }
 }
 

@@ -1,4 +1,5 @@
 import { MessageFlags, SlashCommandBuilder } from "discord.js";
+import { canManageServer } from "../../../core/permissions.js";
 
 export const botInfoCommand = {
   data: new SlashCommandBuilder()
@@ -6,6 +7,14 @@ export const botInfoCommand = {
     .setDescription("Zeigt Informationen zur modularen Basisstruktur."),
 
   async execute({ client, interaction }) {
+    if (!canManageServer(interaction.member)) {
+      await interaction.reply({
+        content: "Diesen Befehl dürfen nur Admins oder Mitglieder mit Server-verwalten nutzen.",
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
     const {
       modules,
       commandRegistry,

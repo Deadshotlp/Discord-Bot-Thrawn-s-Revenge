@@ -103,9 +103,24 @@ export class ModuleConfigStore {
     return this.ensureGuild(guildId);
   }
 
-  getModuleState(guildId, moduleName) {
+  ensureModuleState(guildId, moduleName) {
     const guildConfig = this.ensureGuild(guildId);
-    return guildConfig.modules[moduleName] || null;
+    if (guildConfig.modules[moduleName]) {
+      return guildConfig.modules[moduleName];
+    }
+
+    const defaults = this.moduleDefaults[moduleName];
+    if (!defaults) {
+      return null;
+    }
+
+    guildConfig.modules[moduleName] = cloneJson(defaults);
+    this.saveState();
+    return guildConfig.modules[moduleName];
+  }
+
+  getModuleState(guildId, moduleName) {
+    return this.ensureModuleState(guildId, moduleName);
   }
 
   isModuleEnabled(guildId, moduleName) {
@@ -114,29 +129,29 @@ export class ModuleConfigStore {
   }
 
   setModuleEnabled(guildId, moduleName, enabled) {
-    const guildConfig = this.ensureGuild(guildId);
-    if (!guildConfig.modules[moduleName]) {
+    const moduleState = this.ensureModuleState(guildId, moduleName);
+    if (!moduleState) {
       return null;
     }
 
-    guildConfig.modules[moduleName].enabled = Boolean(enabled);
+    moduleState.enabled = Boolean(enabled);
     this.saveState();
-    return guildConfig.modules[moduleName];
+    return moduleState;
   }
 
   setModuleConfig(guildId, moduleName, fields) {
-    const guildConfig = this.ensureGuild(guildId);
-    if (!guildConfig.modules[moduleName]) {
+    const moduleState = this.ensureModuleState(guildId, moduleName);
+    if (!moduleState) {
       return null;
     }
 
-    const currentConfig = guildConfig.modules[moduleName].config || {};
-    guildConfig.modules[moduleName].config = {
+    const currentConfig = moduleState.config || {};
+    moduleState.config = {
       ...currentConfig,
       ...fields
     };
 
     this.saveState();
-    return guildConfig.modules[moduleName];
+    return moduleState;
   }
 }
