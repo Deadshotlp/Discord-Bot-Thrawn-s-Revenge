@@ -1,4 +1,11 @@
-import { ChannelType, MessageFlags, PermissionFlagsBits } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelType,
+  EmbedBuilder,
+  MessageFlags
+} from "discord.js";
 import { canManageServer } from "../../core/permissions.js";
 import {
   reactionRoleCommand,
@@ -8,14 +15,14 @@ import {
   REACTION_ROLE_PANEL_TITLE_INPUT_ID
 } from "./commands/reactionRole.js";
 import {
-  buildBindingFromReaction,
-  findReactionRoleBindingIndex,
-  findReactionRoleBindingsByReaction,
   normalizeReactionRoleBindings,
   parseReactionRoleMappingLines
 } from "./services/config.js";
 
-const missingManageMessagesWarnedChannels = new Set();
+const REACTION_ROLE_EMBED_COLOR = 0xed4245;
+const REACTION_ROLE_EMBED_DESCRIPTION_MAX_LENGTH = 4000;
+const REACTION_ROLE_BUTTON_PREFIX = "reaction_role_toggle:";
+const REACTION_ROLE_MAX_BUTTONS = 25;
 
 async function resolveGuildMember(guild, userId) {
   return guild.members.cache.get(userId)
@@ -25,16 +32,6 @@ async function resolveGuildMember(guild, userId) {
 async function resolveGuildRole(guild, roleId) {
   return guild.roles.cache.get(roleId)
     || (await guild.roles.fetch(roleId).catch(() => null));
-}
-
-async function canBotManageMessages(guild, channel) {
-  const me = guild.members.me || (await guild.members.fetchMe().catch(() => null));
-  if (!me || !channel?.permissionsFor) {
-    return false;
-  }
-
-  const permissions = channel.permissionsFor(me);
-  return Boolean(permissions?.has(PermissionFlagsBits.ManageMessages));
 }
 
 function toSnowflake(value) {
@@ -51,7 +48,204 @@ function isSupportedReactionChannel(channel) {
   return [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type);
 }
 
+function truncateText(value, maxLength) {
+  const text = String(value || "");
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, Math.max(0, maxLength - 3))}...`;
+}
+
+function toButtonCustomId(roleId) {
+  return `${REACTION_ROLE_BUTTON_PREFIX}${roleId}`;
+}
+
+function getRoleIdFromButtonCustomId(customId) {
+  if (!String(customId || "").startsWith(REACTION_ROLE_BUTTON_PREFIX)) {
+    return "";
+  }
+
+  return toSnowflake(String(customId).slice(REACTION_ROLE_BUTTON_PREFIX.length));
+}
+
+function splitIntoChunks(list, chunkSize) {
+  const source = Array.isArray(list) ? list : [];
+  const chunks = [];
+
+  for (let index = 0; index < source.length; index += chunkSize) {
+    chunks.push(source.slice(index, index + chunkSize));
+  }
+
+  return chunks;
+}
+
+function mapEntryToButtonEmoji(entry) {
+  const emojiData = entry?.emoji;
+  if (!emojiData) {
+    return null;
+  }
+
+  if (emojiData.emojiId) {
+    return {
+      id: emojiData.emojiId
+    };
+  }
+
+  if (emojiData.emojiName) {
+    return emojiData.emojiName;
+  }
+
+  return null;
+}
+
+function buildReactionRolePanelPayload(panelTitle, panelText, entries) {
+  const safeEntries = Array.isArray(entries) ? entries : [];
+  const roleLines = safeEntries.map((entry) => `${entry.emojiToken}  <@&${entry.roleId}>`);
+
+  const description = truncateText(
+    [
+      panelText,
+      "",
+      "--",
+      "",
+      "**Verfuegbare Ping-Rollen**",
+      ...roleLines,
+      "",
+      "Nutze die Reaktionen unter dieser Nachricht, um Rollen zuzuweisen oder zu entfernen."
+    ].join("\n"),
+    REACTION_ROLE_EMBED_DESCRIPTION_MAX_LENGTH
+  );
+
+  const embed = new EmbedBuilder()
+    .setColor(REACTION_ROLE_EMBED_COLOR)
+    .setTitle(panelTitle || "Ping-Rollen")
+    .setDescription(description)
+    .setFooter({ text: "Reaction-Role Panel" });
+
+  const buttonRows = splitIntoChunks(safeEntries.slice(0, REACTION_ROLE_MAX_BUTTONS), 5)
+    .slice(0, 5)
+    .map((chunk) => {
+      const row = new ActionRowBuilder();
+
+      for (const entry of chunk) {
+        const button = new ButtonBuilder()
+          .setCustomId(toButtonCustomId(entry.roleId))
+          .setLabel(truncateText(entry.roleName || `Rolle ${entry.roleId}`, 80))
+          .setStyle(ButtonStyle.Secondary);
+
+        const buttonEmoji = mapEntryToButtonEmoji(entry);
+        if (buttonEmoji) {
+          button.setEmoji(buttonEmoji);
+        }
+
+        row.addComponents(button);
+      }
+
+      return row;
+    });
+
+  return {
+    embeds: [embed],
+    components: buttonRows,
+    allowedMentions: {
+      parse: []
+    }
+  };
+}
+
+async function handleReactionRoleButtonInteraction({ client, interaction }) {
+  const roleId = getRoleIdFromButtonCustomId(interaction.customId);
+  if (!roleId) {
+    return;
+  }
+
+  if (!interaction.inGuild()) {
+    await interaction.reply({
+      content: "Diese Buttons funktionieren nur auf einem Server.",
+      flags: MessageFlags.Ephemeral
+    });
+    return;
+  }
+
+  const messageId = toSnowflake(interaction.message?.id);
+  if (!messageId) {
+    await interaction.reply({
+      content: "Button-Zuordnung ist ungueltig.",
+      flags: MessageFlags.Ephemeral
+    });
+    return;
+  }
+
+  const moduleState = client.botContext.moduleConfigStore.getModuleState(interaction.guildId, "reaction-role");
+  const bindings = normalizeReactionRoleBindings(moduleState?.config?.bindings);
+  const matchedBinding = bindings.find((binding) => binding.messageId === messageId && binding.roleId === roleId);
+
+  if (!matchedBinding) {
+    await interaction.reply({
+      content: "Diese Rolle ist auf dieser Nachricht nicht konfiguriert.",
+      flags: MessageFlags.Ephemeral
+    });
+    return;
+  }
+
+  const member = await resolveGuildMember(interaction.guild, interaction.user.id);
+  if (!member) {
+    await interaction.reply({
+      content: "Mitglied konnte nicht aufgeloest werden.",
+      flags: MessageFlags.Ephemeral
+    });
+    return;
+  }
+
+  const role = await resolveGuildRole(interaction.guild, roleId);
+  if (!role) {
+    await interaction.reply({
+      content: "Die verknuepfte Rolle existiert nicht mehr.",
+      flags: MessageFlags.Ephemeral
+    });
+    return;
+  }
+
+  const hasRole = member.roles.cache.has(role.id);
+
+  try {
+    if (hasRole) {
+      await member.roles.remove(role, "Reaction-Role Button: Rolle entfernt");
+      await interaction.reply({
+        content: `Rolle entfernt: <@&${role.id}>`,
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
+    await member.roles.add(role, "Reaction-Role Button: Rolle zugewiesen");
+    await interaction.reply({
+      content: `Rolle zugewiesen: <@&${role.id}>`,
+      flags: MessageFlags.Ephemeral
+    });
+  } catch (error) {
+    client.botContext.logger.warn("Reaction-Role Button konnte Rolle nicht togglen", {
+      guildId: interaction.guildId,
+      userId: interaction.user.id,
+      roleId,
+      messageId,
+      error: String(error)
+    });
+
+    await interaction.reply({
+      content: "Rolle konnte nicht aktualisiert werden. Bitte Team informieren.",
+      flags: MessageFlags.Ephemeral
+    });
+  }
+}
+
 async function handleReactionRoleInteraction({ client, interaction }) {
+  if (interaction.isButton() && String(interaction.customId || "").startsWith(REACTION_ROLE_BUTTON_PREFIX)) {
+    await handleReactionRoleButtonInteraction({ client, interaction });
+    return;
+  }
+
   if (!interaction.isModalSubmit() || !interaction.customId.startsWith(REACTION_ROLE_PANEL_MODAL_PREFIX)) {
     return;
   }
@@ -110,7 +304,7 @@ async function handleReactionRoleInteraction({ client, interaction }) {
     return;
   }
 
-  const validEntries = [];
+  const validEntriesByRoleId = new Map();
   const invalidRoleIds = [];
 
   for (const entry of entries) {
@@ -120,8 +314,16 @@ async function handleReactionRoleInteraction({ client, interaction }) {
       continue;
     }
 
-    validEntries.push({ ...entry, roleId: role.id });
+    if (!validEntriesByRoleId.has(role.id)) {
+      validEntriesByRoleId.set(role.id, {
+        ...entry,
+        roleId: role.id,
+        roleName: role.name
+      });
+    }
   }
+
+  const validEntries = Array.from(validEntriesByRoleId.values());
 
   if (validEntries.length === 0) {
     await interaction.editReply({
@@ -130,16 +332,15 @@ async function handleReactionRoleInteraction({ client, interaction }) {
     return;
   }
 
-  const summaryLines = validEntries.map((entry) => `${entry.emojiToken} -> <@&${entry.roleId}>`);
-  const content = [
-    panelTitle ? `**${panelTitle}**` : "",
-    panelText,
-    "",
-    "Reagiere auf ein Emoji, um die verknüpfte Rolle zu erhalten:",
-    ...summaryLines
-  ].filter(Boolean).join("\n");
+  if (validEntries.length > REACTION_ROLE_MAX_BUTTONS) {
+    await interaction.editReply({
+      content: `Zu viele Mappings (${validEntries.length}). Ein Panel unterstützt maximal ${REACTION_ROLE_MAX_BUTTONS} Buttons.`
+    });
+    return;
+  }
 
-  const panelMessage = await channel.send({ content }).catch(() => null);
+  const panelPayload = buildReactionRolePanelPayload(panelTitle, panelText, validEntries);
+  const panelMessage = await channel.send(panelPayload).catch(() => null);
   if (!panelMessage) {
     await interaction.editReply({
       content: "Panel-Nachricht konnte nicht gesendet werden. Prüfe Bot-Rechte im Kanal."
@@ -150,33 +351,20 @@ async function handleReactionRoleInteraction({ client, interaction }) {
   const moduleState = client.botContext.moduleConfigStore.getModuleState(interaction.guildId, "reaction-role");
   const existingBindings = normalizeReactionRoleBindings(moduleState?.config?.bindings);
   const nextBindings = [...existingBindings];
-  const failedReactions = [];
   let savedMappings = 0;
 
   for (const entry of validEntries) {
-    const reaction = await panelMessage.react(entry.emojiToken).catch(() => null);
-    if (!reaction) {
-      failedReactions.push(entry.emojiToken);
-      continue;
-    }
-
-    const binding = buildBindingFromReaction({
+    const binding = {
       channelId: channel.id,
       messageId: panelMessage.id,
       roleId: entry.roleId,
-      reaction
-    });
+      emojiId: entry?.emoji?.emojiId || "",
+      emojiName: entry?.emoji?.emojiName || ""
+    };
 
-    if (!binding) {
-      failedReactions.push(entry.emojiToken);
-      continue;
-    }
-
-    const existingIndex = findReactionRoleBindingIndex(nextBindings, {
-      messageId: binding.messageId,
-      emojiId: binding.emojiId,
-      emojiName: binding.emojiName
-    });
+    const existingIndex = nextBindings.findIndex((item) => (
+      item.messageId === binding.messageId && item.roleId === binding.roleId
+    ));
 
     if (existingIndex >= 0) {
       nextBindings[existingIndex] = binding;
@@ -197,103 +385,10 @@ async function handleReactionRoleInteraction({ client, interaction }) {
     content: [
       `Panel erstellt: <#${channel.id}> / ${panelMessage.id}`,
       `Gespeicherte Mappings: ${savedMappings}`,
-      invalidRoleIds.length > 0 ? `Ungültige Rollen: ${invalidRoleIds.map((roleId) => `<@&${roleId}>`).join(" ")}` : "",
-      failedReactions.length > 0 ? `Nicht reagierbare Emojis: ${failedReactions.join(", ")}` : ""
+      "Panel nutzt jetzt Rollen-Buttons statt Reaktionen.",
+      invalidRoleIds.length > 0 ? `Ungültige Rollen: ${invalidRoleIds.map((roleId) => `<@&${roleId}>`).join(" ")}` : ""
     ].filter(Boolean).join("\n")
   });
-}
-
-async function handleReactionRoleAdd({ client, reaction, user }) {
-  if (!reaction || !user || user.bot) {
-    return;
-  }
-
-  if (reaction.partial) {
-    await reaction.fetch().catch(() => null);
-  }
-
-  if (reaction.message.partial) {
-    await reaction.message.fetch().catch(() => null);
-  }
-
-  const guild = reaction.message.guild;
-  if (!guild) {
-    return;
-  }
-
-  const moduleState = client.botContext.moduleConfigStore.getModuleState(guild.id, "reaction-role");
-  const bindings = normalizeReactionRoleBindings(moduleState?.config?.bindings);
-  if (bindings.length === 0) {
-    return;
-  }
-
-  const matchedBindings = findReactionRoleBindingsByReaction(
-    bindings,
-    reaction.message.id,
-    reaction.emoji
-  );
-
-  if (matchedBindings.length === 0) {
-    return;
-  }
-
-  const member = await resolveGuildMember(guild, user.id);
-  let assignedRole = false;
-
-  for (const binding of matchedBindings) {
-    if (!member) {
-      break;
-    }
-
-    const role = await resolveGuildRole(guild, binding.roleId);
-    if (!role) {
-      continue;
-    }
-
-    if (member.roles.cache.has(role.id)) {
-      continue;
-    }
-
-    await member.roles.add(role, "Reaction-Role Auswahl").then(() => {
-      assignedRole = true;
-    }).catch((error) => {
-      client.botContext.logger.warn("Reaction-Role konnte nicht vergeben werden", {
-        guildId: guild.id,
-        userId: user.id,
-        roleId: role.id,
-        messageId: reaction.message.id,
-        error: String(error)
-      });
-    });
-  }
-
-  if (assignedRole) {
-    const channel = reaction.message.channel;
-    const canManageMessages = await canBotManageMessages(guild, channel);
-
-    if (!canManageMessages) {
-      const channelKey = `${guild.id}:${channel?.id || "unknown"}`;
-      if (!missingManageMessagesWarnedChannels.has(channelKey)) {
-        missingManageMessagesWarnedChannels.add(channelKey);
-        client.botContext.logger.info("Reaction-Role: Reaction kann nicht entfernt werden (fehlende Rechte)", {
-          guildId: guild.id,
-          channelId: channel?.id || null,
-          requiredPermission: "ManageMessages"
-        });
-      }
-
-      return;
-    }
-
-    await reaction.users.remove(user.id).catch((error) => {
-      client.botContext.logger.warn("Reaction konnte nicht entfernt werden", {
-        guildId: guild.id,
-        userId: user.id,
-        messageId: reaction.message.id,
-        error: String(error)
-      });
-    });
-  }
 }
 
 export const reactionRoleModule = {
@@ -304,7 +399,6 @@ export const reactionRoleModule = {
   },
   commands: [reactionRoleCommand],
   events: {
-    interactionCreate: [handleReactionRoleInteraction],
-    messageReactionAdd: [handleReactionRoleAdd]
+    interactionCreate: [handleReactionRoleInteraction]
   }
 };

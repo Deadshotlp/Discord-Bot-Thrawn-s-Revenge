@@ -1,14 +1,35 @@
-import { ChannelType } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelType,
+  EmbedBuilder
+} from "discord.js";
 import { normalizeContentCreatorConfig } from "./config.js";
 import {
   fetchLatestYouTubeVideo,
   fetchTwitchStream,
+  getYouTubeQuotaRetryAt,
+  isYouTubeQuotaCoolingDown,
+  isYouTubeQuotaExceededError,
+  markYouTubeQuotaExceeded,
   isTwitchConfigured,
   isYouTubeConfigured
 } from "./providers.js";
 
 const DEFAULT_YOUTUBE_TEMPLATE = "Neues YouTube-Video von {creator}: {title}\n{url}";
-const DEFAULT_TWITCH_TEMPLATE = "{creator} ist jetzt LIVE auf Twitch!\n{title}\n{url}";
+const DEFAULT_TWITCH_TEMPLATE = [
+  "{creator} ist LIVE auf Twitch!",
+  "",
+  "Hey Imperiale!",
+  "Unser Community-Streamer {creator} ist soeben auf Twitch live gegangen!",
+  "",
+  "Schaut gerne vorbei, unterstuetzt ihn im Chat und begleitet ihn bei spannenden Momenten rund um Thrawns Revenge, Events, Entwicklungen und vielem mehr.",
+  "",
+  "Viel Spass im Stream!"
+].join("\n");
+const TWITCH_PURPLE = 0x9146FF;
+const TWITCH_ICON_URL = "https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png";
 
 async function resolveNotifyChannel(guild, channelId) {
   if (!channelId) {
@@ -48,17 +69,76 @@ function buildYouTubeMessage(source, latestVideo) {
   };
 }
 
+function formatGermanClock(value) {
+  const date = value instanceof Date ? value : new Date(value || Date.now());
+
+  return new Intl.DateTimeFormat("de-DE", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(date);
+}
+
+function formatViewers(value) {
+  const viewers = Number(value);
+  if (!Number.isFinite(viewers) || viewers < 0) {
+    return "0";
+  }
+
+  return new Intl.NumberFormat("de-DE").format(viewers);
+}
+
 function buildTwitchMessage(source, stream) {
+  const creatorName = source.displayName || stream.userName || source.login;
   const content = renderTemplate(source.announceTemplate, DEFAULT_TWITCH_TEMPLATE, {
-    creator: source.displayName || stream.userName || source.login,
+    creator: creatorName,
     title: stream.title,
     url: stream.url,
     game: stream.gameName,
     platform: "Twitch"
   });
 
+  const footerTime = formatGermanClock(Date.now());
+  const embed = new EmbedBuilder()
+    .setColor(TWITCH_PURPLE)
+    .setAuthor({
+      name: `${creatorName} is now live on Twitch!`,
+      iconURL: TWITCH_ICON_URL
+    })
+    .setTitle(stream.title || `${creatorName} ist jetzt live`)
+    .setURL(stream.url)
+    .addFields(
+      {
+        name: "Game",
+        value: stream.gameName || "-",
+        inline: true
+      },
+      {
+        name: "Viewers",
+        value: formatViewers(stream.viewerCount),
+        inline: true
+      }
+    )
+    .setFooter({
+      text: `streamcord.io • heute um ${footerTime} Uhr`
+    });
+
+  if (stream.previewImageUrl) {
+    embed.setImage(stream.previewImageUrl);
+  }
+
+  const buttonRow = new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setStyle(ButtonStyle.Link)
+        .setURL(stream.url)
+        .setLabel("Watch Stream")
+    );
+
   return {
-    content
+    content,
+    embeds: [embed],
+    components: [buttonRow]
   };
 }
 
@@ -95,37 +175,52 @@ export async function runContentCreatorPollCycle(client, options = {}) {
     let changed = false;
 
     if (isYouTubeConfigured(env)) {
-      for (const source of config.youtubeChannels) {
-        try {
-          const latestVideo = await fetchLatestYouTubeVideo(env, source.channelId);
-          if (!latestVideo) {
-            continue;
-          }
+      if (!isYouTubeQuotaCoolingDown()) {
+        for (const source of config.youtubeChannels) {
+          try {
+            const latestVideo = await fetchLatestYouTubeVideo(env, source.channelId);
+            if (!latestVideo) {
+              continue;
+            }
 
-          source.channelTitle = source.channelTitle || latestVideo.channelTitle;
+            source.channelTitle = source.channelTitle || latestVideo.channelTitle;
 
-          if (!source.lastVideoId) {
-            source.lastVideoId = latestVideo.videoId;
-            source.lastPublishedAt = latestVideo.publishedAt || "";
-            changed = true;
-            continue;
-          }
+            if (!source.lastVideoId) {
+              source.lastVideoId = latestVideo.videoId;
+              source.lastPublishedAt = latestVideo.publishedAt || "";
+              changed = true;
+              continue;
+            }
 
-          if (source.lastVideoId !== latestVideo.videoId) {
-            await notifyChannel.send(buildYouTubeMessage(source, latestVideo));
-            notificationsSent += 1;
-            source.lastVideoId = latestVideo.videoId;
-            source.lastPublishedAt = latestVideo.publishedAt || "";
-            changed = true;
+            if (source.lastVideoId !== latestVideo.videoId) {
+              await notifyChannel.send(buildYouTubeMessage(source, latestVideo));
+              notificationsSent += 1;
+              source.lastVideoId = latestVideo.videoId;
+              source.lastPublishedAt = latestVideo.publishedAt || "";
+              changed = true;
+            }
+          } catch (error) {
+            if (isYouTubeQuotaExceededError(error)) {
+              markYouTubeQuotaExceeded();
+              const retryAt = getYouTubeQuotaRetryAt();
+
+              logger.warn("ContentCreator: YouTube Quota erreicht, Polling pausiert", {
+                guildId: guild.id,
+                channelId: source.channelId,
+                reason,
+                retryAt: retryAt ? new Date(retryAt).toISOString() : ""
+              });
+              break;
+            }
+
+            errors += 1;
+            logger.warn("ContentCreator: YouTube Poll fehlgeschlagen", {
+              guildId: guild.id,
+              channelId: source.channelId,
+              reason,
+              error: String(error)
+            });
           }
-        } catch (error) {
-          errors += 1;
-          logger.warn("ContentCreator: YouTube Poll fehlgeschlagen", {
-            guildId: guild.id,
-            channelId: source.channelId,
-            reason,
-            error: String(error)
-          });
         }
       }
     }

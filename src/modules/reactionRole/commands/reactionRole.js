@@ -214,6 +214,14 @@ export const reactionRoleCommand = {
     const subcommand = interaction.options.getSubcommand();
     const bindings = normalizeReactionRoleBindings(moduleState.config?.bindings);
 
+    if (subcommand === "add" || subcommand === "remove") {
+      await interaction.reply({
+        content: "Dieser Modus wurde auf Button-Panel umgestellt. Nutze bitte /reaction-role panel, um Rollen ueber Buttons anzubieten.",
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
     if (subcommand === "panel") {
       const channel = interaction.options.getChannel("kanal", true);
 

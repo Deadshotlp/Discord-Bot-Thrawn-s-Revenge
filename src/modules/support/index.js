@@ -61,6 +61,7 @@ import {
   closeSupportTicket,
   createSupportTicket,
   escalateSupportTicket,
+  listClosedSupportTickets,
   getOpenTicketByUser,
   getSupportTicket
 } from "./services/tickets.js";
@@ -79,9 +80,100 @@ import {
   buildSupportTicketOpenModal
 } from "./services/ticketPanel.js";
 
+const CLOSED_TICKET_DELETE_DELAY_MS = 24 * 60 * 60 * 1000;
+const closedTicketDeleteTimers = new Map();
+
 async function resolveGuildMember(guild, userId) {
   return guild.members.cache.get(userId)
     || (await guild.members.fetch(userId).catch(() => null));
+}
+
+function getClosedTicketTimerKey(guildId, ticketId) {
+  return `${guildId}:${ticketId}`;
+}
+
+function clearClosedTicketTimer(guildId, ticketId) {
+  const key = getClosedTicketTimerKey(guildId, ticketId);
+  const timer = closedTicketDeleteTimers.get(key);
+  if (timer) {
+    clearTimeout(timer);
+    closedTicketDeleteTimers.delete(key);
+  }
+}
+
+async function deleteClosedTicketChannel({ client, guildId, ticketId, channelId }) {
+  const latestTicket = getSupportTicket(guildId, ticketId);
+  if (!latestTicket || latestTicket.status !== "closed") {
+    return;
+  }
+
+  const guild = client.guilds.cache.get(guildId)
+    || (await client.guilds.fetch(guildId).catch(() => null));
+
+  if (!guild) {
+    return;
+  }
+
+  const ticketChannel = await resolveTextChannel(guild, channelId || latestTicket.channelId);
+  if (!ticketChannel) {
+    return;
+  }
+
+  await ticketChannel.delete("Ticket seit mehr als 24 Stunden geschlossen").catch((error) => {
+    client.botContext.logger.warn("Geschlossener Ticket-Channel konnte nicht automatisch geloescht werden", {
+      guildId,
+      ticketId,
+      channelId: ticketChannel.id,
+      error: String(error)
+    });
+  });
+}
+
+function scheduleClosedTicketChannelDeletion({ client, ticket }) {
+  if (!ticket || ticket.status !== "closed" || !ticket.guildId || !ticket.id || !ticket.channelId) {
+    return;
+  }
+
+  clearClosedTicketTimer(ticket.guildId, ticket.id);
+
+  const closedAt = Number(ticket.closedAt || 0);
+  const deleteAt = (Number.isFinite(closedAt) && closedAt > 0)
+    ? closedAt + CLOSED_TICKET_DELETE_DELAY_MS
+    : Date.now();
+  const waitMs = Math.max(0, deleteAt - Date.now());
+
+  const key = getClosedTicketTimerKey(ticket.guildId, ticket.id);
+  const runDeletion = async () => {
+    closedTicketDeleteTimers.delete(key);
+    await deleteClosedTicketChannel({
+      client,
+      guildId: ticket.guildId,
+      ticketId: ticket.id,
+      channelId: ticket.channelId
+    });
+  };
+
+  if (waitMs === 0) {
+    void runDeletion();
+    return;
+  }
+
+  const timer = setTimeout(() => {
+    void runDeletion();
+  }, waitMs);
+
+  if (typeof timer.unref === "function") {
+    timer.unref();
+  }
+
+  closedTicketDeleteTimers.set(key, timer);
+}
+
+function scheduleClosedTicketDeletionsForGuild(client, guildId) {
+  const closedTickets = listClosedSupportTickets(guildId);
+  for (const ticket of closedTickets) {
+    scheduleClosedTicketChannelDeletion({ client, ticket });
+  }
 }
 
 async function resolveVoiceChannel(guild, channelId) {
@@ -1095,7 +1187,10 @@ async function handleTicketOpenModalInteraction({ client, interaction }) {
       return;
     }
 
-    closeSupportTicket(interaction.guildId, activeTicket.id, "system");
+    const autoClosedTicket = closeSupportTicket(interaction.guildId, activeTicket.id, "system");
+    if (autoClosedTicket) {
+      scheduleClosedTicketChannelDeletion({ client, ticket: autoClosedTicket });
+    }
   }
 
   const ticketChannelResult = await createTicketChannel({
@@ -1375,9 +1470,11 @@ async function handleTicketCloseInteraction({ client, interaction, ticketId }) {
 
     await ticketChannel.setName(nextName).catch(() => null);
     await ticketChannel.send({
-      content: `Ticket geschlossen von <@${interaction.user.id}>.`
+      content: `Ticket geschlossen von <@${interaction.user.id}>. Dieser Kanal wird in 24 Stunden automatisch geloescht.`
     }).catch(() => null);
   }
+
+  scheduleClosedTicketChannelDeletion({ client, ticket: closedTicket });
 
   const transcriptCreated = await postTicketTranscript({
     interaction,
@@ -1708,6 +1805,8 @@ async function handleSupportGuildCreate({ client, guild }) {
 
 async function handleSupportReady({ client }) {
   for (const guild of client.guilds.cache.values()) {
+    scheduleClosedTicketDeletionsForGuild(client, guild.id);
+
     if (!client.botContext.moduleConfigStore.isModuleEnabled(guild.id, "support")) {
       continue;
     }

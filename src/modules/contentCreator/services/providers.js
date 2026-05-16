@@ -5,6 +5,10 @@ let cachedTwitchToken = {
   expiresAt: 0
 };
 
+const YOUTUBE_QUOTA_COOLDOWN_MS = 60 * 60 * 1000;
+const youtubeUploadsPlaylistCache = new Map();
+let youtubeQuotaBlockedUntil = 0;
+
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, options);
   const text = await response.text();
@@ -26,6 +30,27 @@ async function fetchJson(url, options = {}) {
 
 export function isYouTubeConfigured(env) {
   return Boolean(env.youtubeApiKey);
+}
+
+export function isYouTubeQuotaExceededError(error) {
+  const text = String(error || "");
+  return /quotaExceeded/i.test(text) || /youtube\.quota/i.test(text);
+}
+
+export function markYouTubeQuotaExceeded(cooldownMs = YOUTUBE_QUOTA_COOLDOWN_MS) {
+  const safeCooldownMs = Number.isFinite(cooldownMs)
+    ? Math.max(60_000, Number(cooldownMs))
+    : YOUTUBE_QUOTA_COOLDOWN_MS;
+
+  youtubeQuotaBlockedUntil = Math.max(youtubeQuotaBlockedUntil, Date.now() + safeCooldownMs);
+}
+
+export function isYouTubeQuotaCoolingDown() {
+  return youtubeQuotaBlockedUntil > Date.now();
+}
+
+export function getYouTubeQuotaRetryAt() {
+  return youtubeQuotaBlockedUntil;
 }
 
 export function isTwitchConfigured(env) {
@@ -96,17 +121,35 @@ export async function fetchLatestYouTubeVideo(env, channelId) {
     return null;
   }
 
-  const url = new URL("https://www.googleapis.com/youtube/v3/search");
-  url.searchParams.set("part", "snippet");
-  url.searchParams.set("channelId", normalizedChannelId);
+  const cachedUploadsPlaylistId = youtubeUploadsPlaylistCache.get(normalizedChannelId);
+  let uploadsPlaylistId = cachedUploadsPlaylistId || "";
+
+  if (!uploadsPlaylistId) {
+    const channelUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
+    channelUrl.searchParams.set("part", "contentDetails");
+    channelUrl.searchParams.set("id", normalizedChannelId);
+    channelUrl.searchParams.set("key", env.youtubeApiKey);
+
+    const channelData = await fetchJson(channelUrl.toString());
+    const channelItem = Array.isArray(channelData?.items) ? channelData.items[0] : null;
+    uploadsPlaylistId = channelItem?.contentDetails?.relatedPlaylists?.uploads || "";
+
+    if (!uploadsPlaylistId) {
+      return null;
+    }
+
+    youtubeUploadsPlaylistCache.set(normalizedChannelId, uploadsPlaylistId);
+  }
+
+  const url = new URL("https://www.googleapis.com/youtube/v3/playlistItems");
+  url.searchParams.set("part", "snippet,contentDetails");
+  url.searchParams.set("playlistId", uploadsPlaylistId);
   url.searchParams.set("maxResults", "1");
-  url.searchParams.set("order", "date");
-  url.searchParams.set("type", "video");
   url.searchParams.set("key", env.youtubeApiKey);
 
   const data = await fetchJson(url.toString());
   const item = Array.isArray(data?.items) ? data.items[0] : null;
-  const videoId = item?.id?.videoId || "";
+  const videoId = item?.contentDetails?.videoId || item?.snippet?.resourceId?.videoId || "";
 
   if (!videoId) {
     return null;
@@ -115,7 +158,7 @@ export async function fetchLatestYouTubeVideo(env, channelId) {
   return {
     videoId,
     title: item.snippet?.title || "Neues Video",
-    publishedAt: item.snippet?.publishedAt || "",
+    publishedAt: item?.contentDetails?.videoPublishedAt || item.snippet?.publishedAt || "",
     channelTitle: item.snippet?.channelTitle || normalizedChannelId,
     url: `https://www.youtube.com/watch?v=${videoId}`
   };
@@ -209,13 +252,21 @@ export async function fetchTwitchStream(env, userId) {
     return null;
   }
 
+  const userLogin = item.user_login || item.user_name || "";
+  const previewImageUrl = String(item.thumbnail_url || "")
+    .replace("{width}", "1280")
+    .replace("{height}", "720");
+
   return {
     streamId: item.id,
     userId: item.user_id,
     userName: item.user_name,
+    userLogin,
     title: item.title || "Live",
     gameName: item.game_name || "",
+    viewerCount: Number(item.viewer_count || 0),
     startedAt: item.started_at || "",
-    url: `https://twitch.tv/${item.user_login}`
+    previewImageUrl,
+    url: `https://twitch.tv/${userLogin}`
   };
 }

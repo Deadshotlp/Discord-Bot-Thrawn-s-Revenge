@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Thrawn's Revenge Discord Bot
 
 Der Bot wurde vollständig zurückgesetzt und als modulare Basisstruktur neu aufgebaut.
@@ -133,5 +132,3 @@ Wenn `AUTO_SETUP_CHANNEL_ON_GUILD_JOIN=true` gesetzt ist:
 3. Modul in `src/modules/index.js` registrieren.
 
 So bleibt die Struktur klar getrennt und skalierbar.
-=======
->>>>>>> f33003bf58fd7f9b749ff33ba3e79d08fc093b43

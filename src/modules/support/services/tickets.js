@@ -60,6 +60,13 @@ const selectOpenTicketByUserStmt = db.prepare(`
   LIMIT 1
 `);
 
+const selectClosedTicketsByGuildStmt = db.prepare(`
+  SELECT *
+  FROM support_tickets
+  WHERE guild_id = ? AND status = 'closed'
+  ORDER BY closed_at DESC
+`);
+
 const insertTicketStmt = db.prepare(`
   INSERT INTO support_tickets (
     guild_id,
@@ -181,6 +188,13 @@ export function getSupportTicket(guildId, ticketId) {
 
 export function getOpenTicketByUser(guildId, userId) {
   return toTicketData(selectOpenTicketByUserStmt.get(guildId, userId));
+}
+
+export function listClosedSupportTickets(guildId) {
+  return selectClosedTicketsByGuildStmt
+    .all(guildId)
+    .map((row) => toTicketData(row))
+    .filter(Boolean);
 }
 
 const closeTicketTransaction = db.transaction((guildId, ticketId, closedById) => {
