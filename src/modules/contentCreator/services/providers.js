@@ -150,6 +150,13 @@ export async function fetchLatestYouTubeVideo(env, channelId) {
   const data = await fetchJson(url.toString());
   const item = Array.isArray(data?.items) ? data.items[0] : null;
   const videoId = item?.contentDetails?.videoId || item?.snippet?.resourceId?.videoId || "";
+  const thumbnails = item?.snippet?.thumbnails || {};
+  const thumbnailUrl = thumbnails?.maxres?.url
+    || thumbnails?.standard?.url
+    || thumbnails?.high?.url
+    || thumbnails?.medium?.url
+    || thumbnails?.default?.url
+    || "";
 
   if (!videoId) {
     return null;
@@ -160,6 +167,7 @@ export async function fetchLatestYouTubeVideo(env, channelId) {
     title: item.snippet?.title || "Neues Video",
     publishedAt: item?.contentDetails?.videoPublishedAt || item.snippet?.publishedAt || "",
     channelTitle: item.snippet?.channelTitle || normalizedChannelId,
+    thumbnailUrl,
     url: `https://www.youtube.com/watch?v=${videoId}`
   };
 }

@@ -17,7 +17,16 @@ import {
   isYouTubeConfigured
 } from "./providers.js";
 
-const DEFAULT_YOUTUBE_TEMPLATE = "Neues YouTube-Video von {creator}: {title}\n{url}";
+const DEFAULT_YOUTUBE_TEMPLATE = [
+  "{creator} hat ein neues YouTube-Video veroeffentlicht!",
+  "",
+  "Hey Imperiale!",
+  "Unser Community-Creator {creator} hat soeben ein neues Video hochgeladen!",
+  "",
+  "Schaut gerne vorbei, unterstuetzt ihn mit einem Like und begleitet ihn bei spannenden Momenten rund um Thrawns Revenge, Events, Entwicklungen und vielem mehr.",
+  "",
+  "Viel Spass beim Zuschauen!"
+].join("\n");
 const DEFAULT_TWITCH_TEMPLATE = [
   "{creator} ist LIVE auf Twitch!",
   "",
@@ -30,6 +39,8 @@ const DEFAULT_TWITCH_TEMPLATE = [
 ].join("\n");
 const TWITCH_PURPLE = 0x9146FF;
 const TWITCH_ICON_URL = "https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png";
+const YOUTUBE_RED = 0xFF0000;
+const YOUTUBE_ICON_URL = "https://www.youtube.com/s/desktop/4e9f9f85/img/favicon_32x32.png";
 
 async function resolveNotifyChannel(guild, channelId) {
   if (!channelId) {
@@ -56,16 +67,56 @@ function renderTemplate(template, fallbackTemplate, variables) {
 }
 
 function buildYouTubeMessage(source, latestVideo) {
+  const creatorName = latestVideo.channelTitle || source.channelTitle || source.channelId;
   const content = renderTemplate(source.announceTemplate, DEFAULT_YOUTUBE_TEMPLATE, {
-    creator: latestVideo.channelTitle || source.channelTitle || source.channelId,
+    creator: creatorName,
     title: latestVideo.title,
     url: latestVideo.url,
     game: "",
     platform: "YouTube"
   });
 
+  const footerTime = formatGermanClock(latestVideo.publishedAt || Date.now());
+  const embed = new EmbedBuilder()
+    .setColor(YOUTUBE_RED)
+    .setAuthor({
+      name: `${creatorName} hat ein neues Video auf YouTube!`,
+      iconURL: YOUTUBE_ICON_URL
+    })
+    .setTitle(latestVideo.title || `${creatorName} hat ein neues Video hochgeladen`)
+    .setURL(latestVideo.url)
+    .addFields(
+      {
+        name: "Platform",
+        value: "YouTube",
+        inline: true
+      },
+      {
+        name: "Kanal",
+        value: creatorName,
+        inline: true
+      }
+    )
+    .setFooter({
+      text: `Heute um ${footerTime} Uhr`
+    });
+
+  if (latestVideo.thumbnailUrl) {
+    embed.setImage(latestVideo.thumbnailUrl);
+  }
+
+  const buttonRow = new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setStyle(ButtonStyle.Link)
+        .setURL(latestVideo.url)
+        .setLabel("Watch Video")
+    );
+
   return {
-    content
+    content,
+    embeds: [embed],
+    components: [buttonRow]
   };
 }
 
@@ -120,7 +171,7 @@ function buildTwitchMessage(source, stream) {
       }
     )
     .setFooter({
-      text: `streamcord.io • heute um ${footerTime} Uhr`
+      text: `Heute um ${footerTime} Uhr`
     });
 
   if (stream.previewImageUrl) {
