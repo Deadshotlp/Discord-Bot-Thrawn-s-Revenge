@@ -7,6 +7,8 @@ import {
 
 export const CONTENT_CREATOR_SETUP_MODAL_ID = "content_creator_setup_modal";
 export const CONTENT_CREATOR_SETUP_CHANNEL_INPUT_ID = "content_creator_setup_channel";
+export const CONTENT_CREATOR_SETUP_YOUTUBE_ROLE_INPUT_ID = "content_creator_setup_youtube_role";
+export const CONTENT_CREATOR_SETUP_TWITCH_ROLE_INPUT_ID = "content_creator_setup_twitch_role";
 export const CONTENT_CREATOR_SETUP_YOUTUBE_INPUT_ID = "content_creator_setup_youtube";
 export const CONTENT_CREATOR_SETUP_TWITCH_INPUT_ID = "content_creator_setup_twitch";
 
@@ -62,6 +64,8 @@ export function parseProfileLines(rawText) {
 
 export function buildContentCreatorSetupModal(config = {}) {
   const notifyChannelId = safeString(config.notifyChannelId);
+  const youtubeRoleId = safeString(config.youtubeRoleId);
+  const twitchRoleId = safeString(config.twitchRoleId);
   const youtubeValue = serializeSourceLines(config.youtubeChannels, "channelId");
   const twitchValue = serializeSourceLines(config.twitchChannels, "login");
 
@@ -79,6 +83,30 @@ export function buildContentCreatorSetupModal(config = {}) {
 
   if (notifyChannelId) {
     channelInput.setValue(safeInputValue(notifyChannelId, 120));
+  }
+
+  const youtubeRoleInput = new TextInputBuilder()
+    .setCustomId(CONTENT_CREATOR_SETUP_YOUTUBE_ROLE_INPUT_ID)
+    .setLabel("YouTube Ping-Rolle (ID oder @Erwaehnung)")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(false)
+    .setPlaceholder("Leer = kein Rollen-Ping")
+    .setMaxLength(120);
+
+  if (youtubeRoleId) {
+    youtubeRoleInput.setValue(safeInputValue(youtubeRoleId, 120));
+  }
+
+  const twitchRoleInput = new TextInputBuilder()
+    .setCustomId(CONTENT_CREATOR_SETUP_TWITCH_ROLE_INPUT_ID)
+    .setLabel("Twitch Ping-Rolle (ID oder @Erwaehnung)")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(false)
+    .setPlaceholder("Leer = kein Rollen-Ping")
+    .setMaxLength(120);
+
+  if (twitchRoleId) {
+    twitchRoleInput.setValue(safeInputValue(twitchRoleId, 120));
   }
 
   const youtubeInput = new TextInputBuilder()
@@ -107,6 +135,8 @@ export function buildContentCreatorSetupModal(config = {}) {
 
   modal.addComponents(
     new ActionRowBuilder().addComponents(channelInput),
+    new ActionRowBuilder().addComponents(youtubeRoleInput),
+    new ActionRowBuilder().addComponents(twitchRoleInput),
     new ActionRowBuilder().addComponents(youtubeInput),
     new ActionRowBuilder().addComponents(twitchInput)
   );

@@ -96,6 +96,8 @@ export function normalizeContentCreatorConfig(rawConfig) {
 
   return {
     notifyChannelId: toSnowflake(config.notifyChannelId),
+    youtubeRoleId: toSnowflake(config.youtubeRoleId),
+    twitchRoleId: toSnowflake(config.twitchRoleId),
     youtubeChannels: normalizeYouTubeChannels(config.youtubeChannels),
     twitchChannels: normalizeTwitchChannels(config.twitchChannels)
   };

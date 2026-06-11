@@ -66,15 +66,29 @@ function renderTemplate(template, fallbackTemplate, variables) {
   });
 }
 
-function buildYouTubeMessage(source, latestVideo) {
+function buildRoleMention(roleId) {
+  const id = String(roleId || "").trim();
+  return id ? `<@&${id}>` : "";
+}
+
+function mergeContentWithRoleMention(content, roleId) {
+  const roleMention = buildRoleMention(roleId);
+  if (!roleMention) {
+    return content;
+  }
+
+  return `${roleMention}\n${content}`;
+}
+
+function buildYouTubeMessage(source, latestVideo, roleId = "") {
   const creatorName = latestVideo.channelTitle || source.channelTitle || source.channelId;
-  const content = renderTemplate(source.announceTemplate, DEFAULT_YOUTUBE_TEMPLATE, {
+  const content = mergeContentWithRoleMention(renderTemplate(source.announceTemplate, DEFAULT_YOUTUBE_TEMPLATE, {
     creator: creatorName,
     title: latestVideo.title,
     url: latestVideo.url,
     game: "",
     platform: "YouTube"
-  });
+  }), roleId);
 
   const footerTime = formatGermanClock(latestVideo.publishedAt || Date.now());
   const embed = new EmbedBuilder()
@@ -116,7 +130,10 @@ function buildYouTubeMessage(source, latestVideo) {
   return {
     content,
     embeds: [embed],
-    components: [buttonRow]
+    components: [buttonRow],
+    allowedMentions: {
+      roles: roleId ? [roleId] : []
+    }
   };
 }
 
@@ -139,15 +156,15 @@ function formatViewers(value) {
   return new Intl.NumberFormat("de-DE").format(viewers);
 }
 
-function buildTwitchMessage(source, stream) {
+function buildTwitchMessage(source, stream, roleId = "") {
   const creatorName = source.displayName || stream.userName || source.login;
-  const content = renderTemplate(source.announceTemplate, DEFAULT_TWITCH_TEMPLATE, {
+  const content = mergeContentWithRoleMention(renderTemplate(source.announceTemplate, DEFAULT_TWITCH_TEMPLATE, {
     creator: creatorName,
     title: stream.title,
     url: stream.url,
     game: stream.gameName,
     platform: "Twitch"
-  });
+  }), roleId);
 
   const footerTime = formatGermanClock(Date.now());
   const embed = new EmbedBuilder()
@@ -189,7 +206,10 @@ function buildTwitchMessage(source, stream) {
   return {
     content,
     embeds: [embed],
-    components: [buttonRow]
+    components: [buttonRow],
+    allowedMentions: {
+      roles: roleId ? [roleId] : []
+    }
   };
 }
 
@@ -223,6 +243,13 @@ export async function runContentCreatorPollCycle(client, options = {}) {
       continue;
     }
 
+    const youtubeRoleId = config.youtubeRoleId && guild.roles.cache.get(config.youtubeRoleId)
+      ? config.youtubeRoleId
+      : "";
+    const twitchRoleId = config.twitchRoleId && guild.roles.cache.get(config.twitchRoleId)
+      ? config.twitchRoleId
+      : "";
+
     let changed = false;
 
     if (isYouTubeConfigured(env)) {
@@ -244,7 +271,7 @@ export async function runContentCreatorPollCycle(client, options = {}) {
             }
 
             if (source.lastVideoId !== latestVideo.videoId) {
-              await notifyChannel.send(buildYouTubeMessage(source, latestVideo));
+              await notifyChannel.send(buildYouTubeMessage(source, latestVideo, youtubeRoleId));
               notificationsSent += 1;
               source.lastVideoId = latestVideo.videoId;
               source.lastPublishedAt = latestVideo.publishedAt || "";
@@ -293,7 +320,7 @@ export async function runContentCreatorPollCycle(client, options = {}) {
 
           const isNewLive = !source.wasLive || source.lastStreamId !== stream.streamId;
           if (isNewLive) {
-            await notifyChannel.send(buildTwitchMessage(source, stream));
+            await notifyChannel.send(buildTwitchMessage(source, stream, twitchRoleId));
             notificationsSent += 1;
           }
 

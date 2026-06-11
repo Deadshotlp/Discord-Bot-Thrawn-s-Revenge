@@ -13,7 +13,9 @@ import {
 import {
   CONTENT_CREATOR_SETUP_CHANNEL_INPUT_ID,
   CONTENT_CREATOR_SETUP_MODAL_ID,
+  CONTENT_CREATOR_SETUP_TWITCH_ROLE_INPUT_ID,
   CONTENT_CREATOR_SETUP_TWITCH_INPUT_ID,
+  CONTENT_CREATOR_SETUP_YOUTUBE_ROLE_INPUT_ID,
   CONTENT_CREATOR_SETUP_YOUTUBE_INPUT_ID,
   parseProfileLines
 } from "./services/panel.js";
@@ -126,6 +128,40 @@ async function handleContentCreatorInteraction({ client, interaction }) {
     notifyChannelId = channel.id;
   }
 
+  const youtubeRoleInput = interaction.fields.getTextInputValue(CONTENT_CREATOR_SETUP_YOUTUBE_ROLE_INPUT_ID)?.trim() || "";
+  const twitchRoleInput = interaction.fields.getTextInputValue(CONTENT_CREATOR_SETUP_TWITCH_ROLE_INPUT_ID)?.trim() || "";
+
+  const youtubeRoleId = toSnowflake(youtubeRoleInput);
+  const twitchRoleId = toSnowflake(twitchRoleInput);
+
+  if (youtubeRoleInput && !youtubeRoleId) {
+    await interaction.editReply({
+      content: "YouTube Ping-Rolle ist ungueltig. Bitte ID oder @Erwaehnung einer Rolle nutzen."
+    });
+    return;
+  }
+
+  if (twitchRoleInput && !twitchRoleId) {
+    await interaction.editReply({
+      content: "Twitch Ping-Rolle ist ungueltig. Bitte ID oder @Erwaehnung einer Rolle nutzen."
+    });
+    return;
+  }
+
+  if (youtubeRoleId && !interaction.guild.roles.cache.get(youtubeRoleId)) {
+    await interaction.editReply({
+      content: "YouTube Ping-Rolle wurde auf diesem Server nicht gefunden."
+    });
+    return;
+  }
+
+  if (twitchRoleId && !interaction.guild.roles.cache.get(twitchRoleId)) {
+    await interaction.editReply({
+      content: "Twitch Ping-Rolle wurde auf diesem Server nicht gefunden."
+    });
+    return;
+  }
+
   const youtubeEntries = parseProfileLines(interaction.fields.getTextInputValue(CONTENT_CREATOR_SETUP_YOUTUBE_INPUT_ID));
   const twitchEntries = parseProfileLines(interaction.fields.getTextInputValue(CONTENT_CREATOR_SETUP_TWITCH_INPUT_ID));
 
@@ -182,6 +218,8 @@ async function handleContentCreatorInteraction({ client, interaction }) {
 
   const nextConfig = {
     notifyChannelId,
+    youtubeRoleId,
+    twitchRoleId,
     youtubeChannels: Array.from(nextYoutube.values()),
     twitchChannels: Array.from(nextTwitch.values())
   };
@@ -193,6 +231,12 @@ async function handleContentCreatorInteraction({ client, interaction }) {
       notifyChannelId
         ? `Ankuendigungs-Channel gesetzt: <#${notifyChannelId}>`
         : "Ankuendigungs-Channel geleert (Benachrichtigungen pausiert).",
+      youtubeRoleId
+        ? `YouTube Ping-Rolle gesetzt: <@&${youtubeRoleId}>`
+        : "YouTube Ping-Rolle entfernt.",
+      twitchRoleId
+        ? `Twitch Ping-Rolle gesetzt: <@&${twitchRoleId}>`
+        : "Twitch Ping-Rolle entfernt.",
       `YouTube Profile gespeichert: ${nextConfig.youtubeChannels.length}`,
       `Twitch Profile gespeichert: ${nextConfig.twitchChannels.length}`,
       errors.length > 0 ? `Hinweise:\n${errors.slice(0, 8).join("\n")}` : ""
@@ -207,6 +251,8 @@ export const contentCreatorModule = {
   defaultEnabled: false,
   defaultConfig: {
     notifyChannelId: "",
+    youtubeRoleId: "",
+    twitchRoleId: "",
     youtubeChannels: [],
     twitchChannels: []
   },
