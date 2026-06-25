@@ -51,6 +51,19 @@ src/
       services/
         ensureSetupChannel.js
         panel.js
+    reactionRole/
+      index.js
+      commands/
+        reactionRole.js
+      services/
+        config.js
+    contentCreator/
+      index.js
+      services/
+        config.js
+        panel.js
+        polling.js
+        providers.js
   index.js
 ```
 
@@ -79,6 +92,7 @@ npm run start
 - `/support-department`
 - `/support-department-ui`
 - `/support-ticket-panel`
+- `/reaction-role`
 
 ## Modulverwaltung
 
@@ -124,6 +138,18 @@ Wenn `AUTO_SETUP_CHANNEL_ON_GUILD_JOIN=true` gesetzt ist:
 - Fall schließen (beide werden aus Voice entfernt)
 - Transkript (erstellt eine Falldatei im Verwaltungschannel)
 - Departments können mit `/support-department` (Slash-Command) oder `/support-department-ui` (Interface) verwaltet werden.
+
+## Reaction-Roles
+
+- Mit `/reaction-role` wird ein Panel mit Rollen-Buttons erstellt (Emoji + Rolle).
+- Klick auf einen Button vergibt oder entfernt die zugehörige Rolle beim Nutzer.
+
+## Content-Creator-Benachrichtigungen
+
+- Überwacht YouTube-Kanäle und Twitch-Streamer per Polling (Intervall über `CREATOR_POLL_INTERVAL_SECONDS`).
+- Postet bei neuen Videos/Streams eine Ankündigung im konfigurierten Channel, optional mit Rollen-Ping.
+- Konfiguration (Channel, Rollen, beobachtete Kanäle) läuft über das Setup-Panel.
+- Erfordert `YOUTUBE_API_KEY` bzw. `TWITCH_CLIENT_ID`/`TWITCH_CLIENT_SECRET` in der `.env`.
 
 ## Module erweitern
 

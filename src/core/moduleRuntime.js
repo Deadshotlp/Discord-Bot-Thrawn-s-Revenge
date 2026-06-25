@@ -1,3 +1,5 @@
+import { MessageFlags } from "discord.js";
+
 export function buildCommandRegistry(modules) {
   const commandRegistry = new Map();
   const commandPayload = [];
@@ -65,6 +67,14 @@ export async function runEventHandlers(modules, eventName, payload, logger) {
         module: moduleName,
         error: String(error)
       });
+
+      const interaction = payload?.interaction;
+      if (interaction?.isRepliable?.() && !interaction.replied && !interaction.deferred) {
+        await interaction.reply({
+          content: "Beim Ausführen dieser Aktion ist ein Fehler aufgetreten.",
+          flags: MessageFlags.Ephemeral
+        }).catch(() => null);
+      }
     }
   }
 }

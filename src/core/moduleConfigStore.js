@@ -53,7 +53,9 @@ export class ModuleConfigStore {
   }
 
   saveState() {
-    fs.writeFileSync(this.filePath, JSON.stringify(this.state, null, 2));
+    const tempPath = `${this.filePath}.${process.pid}.${Date.now()}.tmp`;
+    fs.writeFileSync(tempPath, JSON.stringify(this.state, null, 2));
+    fs.renameSync(tempPath, this.filePath);
   }
 
   ensureGuild(guildId) {
