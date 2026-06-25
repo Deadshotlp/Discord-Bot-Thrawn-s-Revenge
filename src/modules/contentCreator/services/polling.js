@@ -40,7 +40,7 @@ const DEFAULT_TWITCH_TEMPLATE = [
 const TWITCH_PURPLE = 0x9146FF;
 const TWITCH_ICON_URL = "https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png";
 const YOUTUBE_RED = 0xFF0000;
-const YOUTUBE_ICON_URL = "https://www.youtube.com/s/desktop/4e9f9f85/img/favicon_32x32.png";
+const YOUTUBE_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/4/42/YouTube_icon_%282013-2017%29.png";
 
 async function resolveNotifyChannel(guild, channelId) {
   if (!channelId) {

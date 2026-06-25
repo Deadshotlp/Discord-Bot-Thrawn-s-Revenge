@@ -43,6 +43,7 @@ export const env = {
   twitchClientId: process.env.TWITCH_CLIENT_ID || "",
   twitchClientSecret: process.env.TWITCH_CLIENT_SECRET || "",
   creatorPollIntervalSeconds: parseInteger(process.env.CREATOR_POLL_INTERVAL_SECONDS, 180),
+  serverStatusPollIntervalSeconds: parseInteger(process.env.SERVER_STATUS_POLL_INTERVAL_SECONDS, 300),
   setupChannelName: process.env.SETUP_CHANNEL_NAME || "bot-setup",
   verifyDefaultRoleName: process.env.VERIFY_DEFAULT_ROLE_NAME || "Verifiziert",
   verifyDefaultChannelName: process.env.VERIFY_DEFAULT_CHANNEL_NAME || "verify",

@@ -261,9 +261,14 @@ export async function fetchTwitchStream(env, userId) {
   }
 
   const userLogin = item.user_login || item.user_name || "";
-  const previewImageUrl = String(item.thumbnail_url || "")
+  const rawThumbnailUrl = String(item.thumbnail_url || "")
     .replace("{width}", "1280")
     .replace("{height}", "720");
+
+  // Twitchs thumbnail_url ist pro Channel statisch (kein Stream-Bezeichner enthalten),
+  // daher cacht Discord sonst das Vorschaubild eines früheren Streams unter derselben URL.
+  const startedAtTimestamp = item.started_at ? new Date(item.started_at).getTime() : Date.now();
+  const previewImageUrl = rawThumbnailUrl ? `${rawThumbnailUrl}?cb=${startedAtTimestamp}` : "";
 
   return {
     streamId: item.id,

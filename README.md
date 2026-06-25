@@ -64,6 +64,16 @@ src/
         panel.js
         polling.js
         providers.js
+    serverStatus/
+      index.js
+      commands/
+        serverStatus.js
+      services/
+        chart.js
+        config.js
+        history.js
+        panel.js
+        query.js
   index.js
 ```
 
@@ -93,6 +103,7 @@ npm run start
 - `/support-department-ui`
 - `/support-ticket-panel`
 - `/reaction-role`
+- `/server-status`
 
 ## Modulverwaltung
 
@@ -150,6 +161,16 @@ Wenn `AUTO_SETUP_CHANNEL_ON_GUILD_JOIN=true` gesetzt ist:
 - Postet bei neuen Videos/Streams eine Ankündigung im konfigurierten Channel, optional mit Rollen-Ping.
 - Konfiguration (Channel, Rollen, beobachtete Kanäle) läuft über das Setup-Panel.
 - Erfordert `YOUTUBE_API_KEY` bzw. `TWITCH_CLIENT_ID`/`TWITCH_CLIENT_SECRET` in der `.env`.
+
+## Server-Status (Game-Server-Monitoring)
+
+- Fragt den Status eines Source-Engine-Servers (z. B. Garry's Mod) per A2S-Query-Protokoll ab (UDP, kein Server-Addon nötig).
+- `/server-status` zeigt sofort den aktuellen Status: Online/Offline, Map, Spielerzahl, Connect-Befehl.
+- Optional ein live aktualisiertes Status-Panel in einem festen Channel (wird per Setup-Panel konfiguriert).
+- Speichert alle `SERVER_STATUS_POLL_INTERVAL_SECONDS` (Standard 300s) einen Snapshot in einer eigenen SQLite-Datenbank.
+- Zeigt einen 7-Tage-Verlauf (Peak/Durchschnitt pro Tag) als Chart-Bild im Panel, gerendert über die QuickChart.io-Bild-API.
+- Verlaufsdaten werden nach 30 Tagen automatisch bereinigt.
+- "Direct Connect"-Button mit `steam://connect/ip:port`; falls Discord den Button ablehnt, bleibt der `connect ip:port`-Text als Fallback im Embed.
 
 ## Module erweitern
 

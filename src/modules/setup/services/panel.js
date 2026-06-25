@@ -63,6 +63,15 @@ function buildStatusText(moduleName, moduleState) {
     ].join("\n");
   }
 
+  if (moduleName === "server-status") {
+    const config = moduleState?.config || {};
+    return [
+      activeText,
+      `Server: ${config.serverHost ? `${config.serverHost}:${config.serverPort || 27015}` : "(nicht gesetzt)"}`,
+      `Panel-Channel: ${toChannelMention(config.statusChannelId)}`
+    ].join("\n");
+  }
+
   if (moduleName !== "verify") {
     return activeText;
   }
@@ -96,17 +105,24 @@ export function buildSetupPanelPayload(client, guildId) {
     .addFields(fields)
     .setFooter({ text: "Basis-Modul setup bleibt immer bedienbar." });
 
-  const toggleRow = new ActionRowBuilder();
-  for (const moduleDef of managedModules.slice(0, 5)) {
-    const moduleState = moduleConfigStore.getModuleState(guildId, moduleDef.name);
-    const active = Boolean(moduleState?.enabled);
+  const toggleRows = [];
+  for (let index = 0; index < managedModules.length; index += 5) {
+    const rowModules = managedModules.slice(index, index + 5);
+    const row = new ActionRowBuilder();
 
-    toggleRow.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`${SETUP_TOGGLE_PREFIX}${moduleDef.name}`)
-        .setLabel(`${toLabel(moduleDef.name)} ${active ? "aus" : "ein"}`)
-        .setStyle(active ? ButtonStyle.Danger : ButtonStyle.Success)
-    );
+    for (const moduleDef of rowModules) {
+      const moduleState = moduleConfigStore.getModuleState(guildId, moduleDef.name);
+      const active = Boolean(moduleState?.enabled);
+
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`${SETUP_TOGGLE_PREFIX}${moduleDef.name}`)
+          .setLabel(`${toLabel(moduleDef.name)} ${active ? "aus" : "ein"}`)
+          .setStyle(active ? ButtonStyle.Danger : ButtonStyle.Success)
+      );
+    }
+
+    toggleRows.push(row);
   }
 
   const configRow = new ActionRowBuilder();
@@ -138,6 +154,16 @@ export function buildSetupPanelPayload(client, guildId) {
     );
   }
 
+  if (managedModules.some((moduleDef) => moduleDef.name === "server-status")) {
+    configRow.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`${SETUP_CONFIG_PREFIX}server-status`)
+        .setLabel("Server-Status konfigurieren")
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(!moduleConfigStore.isModuleEnabled(guildId, "server-status"))
+    );
+  }
+
   configRow.addComponents(
     new ButtonBuilder()
       .setCustomId(SETUP_REFRESH_ID)
@@ -147,7 +173,7 @@ export function buildSetupPanelPayload(client, guildId) {
 
   return {
     embeds: [embed],
-    components: [toggleRow, configRow]
+    components: [...toggleRows, configRow]
   };
 }
 

@@ -4,6 +4,7 @@ import { verifyModule } from "./verify/index.js";
 import { systemModule } from "./system/index.js";
 import { reactionRoleModule } from "./reactionRole/index.js";
 import { contentCreatorModule } from "./contentCreator/index.js";
+import { serverStatusModule } from "./serverStatus/index.js";
 
 export const modules = [
   systemModule,
@@ -11,5 +12,6 @@ export const modules = [
   supportModule,
   verifyModule,
   reactionRoleModule,
-  contentCreatorModule
+  contentCreatorModule,
+  serverStatusModule
 ];

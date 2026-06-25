@@ -27,6 +27,8 @@ import { ensureVerifyDefaults } from "../verify/services/provisioning.js";
 import { VERIFY_RULES_TEXT_MAX_LENGTH } from "../verify/services/panel.js";
 import { normalizeContentCreatorConfig } from "../contentCreator/services/config.js";
 import { buildContentCreatorSetupModal } from "../contentCreator/services/panel.js";
+import { normalizeServerStatusConfig } from "../serverStatus/services/config.js";
+import { buildServerStatusSetupModal } from "../serverStatus/services/panel.js";
 
 function extractSnowflake(raw) {
   const text = String(raw || "").trim();
@@ -241,6 +243,12 @@ async function handleSetupInteraction({ client, interaction }) {
       if (moduleName === "content-creator") {
         const contentState = moduleConfigStore.getModuleState(interaction.guildId, "content-creator");
         await interaction.showModal(buildContentCreatorSetupModal(normalizeContentCreatorConfig(contentState?.config)));
+        return;
+      }
+
+      if (moduleName === "server-status") {
+        const serverStatusState = moduleConfigStore.getModuleState(interaction.guildId, "server-status");
+        await interaction.showModal(buildServerStatusSetupModal(normalizeServerStatusConfig(serverStatusState?.config)));
         return;
       }
 
