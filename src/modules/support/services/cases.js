@@ -1,11 +1,8 @@
-import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
+import { ensureDataDir } from "../../../core/dataDir.js";
 
-const dataDir = path.join(process.cwd(), "data");
-const dbFilePath = path.join(dataDir, "support-cases.db");
-
-fs.mkdirSync(dataDir, { recursive: true });
+const dbFilePath = path.join(ensureDataDir(), "support-cases.db");
 
 const db = new Database(dbFilePath);
 
@@ -301,4 +298,10 @@ const appendActionTransaction = db.transaction((guildId, caseId, text) => {
 export function addSupportCaseAction(guildId, caseId, text) {
   const row = appendActionTransaction(guildId, caseId, text);
   return toCaseData(row);
+}
+
+export function closeSupportCasesDb() {
+  if (db.open) {
+    db.close();
+  }
 }

@@ -1,11 +1,8 @@
-import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
+import { ensureDataDir } from "../../../core/dataDir.js";
 
-const dataDir = path.join(process.cwd(), "data");
-const dbFilePath = path.join(dataDir, "support-tickets.db");
-
-fs.mkdirSync(dataDir, { recursive: true });
+const dbFilePath = path.join(ensureDataDir(), "support-tickets.db");
 
 const db = new Database(dbFilePath);
 
@@ -237,4 +234,10 @@ const escalateTicketTransaction = db.transaction((guildId, ticketId, departmentI
 
 export function escalateSupportTicket(guildId, ticketId, departmentId) {
   return toTicketData(escalateTicketTransaction(guildId, ticketId, departmentId));
+}
+
+export function closeSupportTicketsDb() {
+  if (db.open) {
+    db.close();
+  }
 }

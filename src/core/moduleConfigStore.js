@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { dataDir, ensureDataDir } from "./dataDir.js";
 
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
@@ -21,10 +22,10 @@ function normalizeModules(modules) {
 export class ModuleConfigStore {
   constructor(modules, logger) {
     this.logger = logger;
-    this.filePath = path.join(process.cwd(), "data", "module-config.json");
+    this.filePath = path.join(dataDir, "module-config.json");
     this.moduleDefaults = normalizeModules(modules);
 
-    fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
+    ensureDataDir();
     this.state = this.loadState();
   }
 

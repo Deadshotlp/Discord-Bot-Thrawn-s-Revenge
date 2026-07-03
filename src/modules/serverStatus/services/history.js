@@ -1,11 +1,8 @@
-import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
+import { ensureDataDir } from "../../../core/dataDir.js";
 
-const dataDir = path.join(process.cwd(), "data");
-const dbFilePath = path.join(dataDir, "server-status-history.db");
-
-fs.mkdirSync(dataDir, { recursive: true });
+const dbFilePath = path.join(ensureDataDir(), "server-status-history.db");
 
 const db = new Database(dbFilePath);
 
@@ -72,6 +69,12 @@ export function getServerStatusSnapshotsSince(guildId, sinceTimestamp) {
 export function pruneServerStatusSnapshotsOlderThan(guildId, cutoffTimestamp) {
   const result = deleteSnapshotsOlderThanStmt.run(guildId, cutoffTimestamp);
   return result.changes;
+}
+
+export function closeServerStatusHistoryDb() {
+  if (db.open) {
+    db.close();
+  }
 }
 
 export function buildDailyPlayerStats(snapshots, days = 7, now = Date.now()) {
