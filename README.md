@@ -61,6 +61,7 @@ z. B. für Deployments mit persistentem Volume.
 - `/support-ticket-panel`
 - `/reaction-role`
 - `/server-status`
+- `/wochenbericht`
 
 ## Modulverwaltung
 
@@ -106,6 +107,26 @@ Wenn `AUTO_SETUP_CHANNEL_ON_GUILD_JOIN=true` gesetzt ist:
 - Fall schließen (beide werden aus Voice entfernt)
 - Transkript (erstellt eine Falldatei im Verwaltungschannel)
 - Departments können mit `/support-department` (Slash-Command) oder `/support-department-ui` (Interface) verwaltet werden.
+
+## Wochenberichte
+
+- Die Leiter der Support-Departments geben formatierte Textblöcke ab; zum konfigurierten
+  Termin werden alle Abgaben zusammengeführt und veröffentlicht.
+- Leiter-Rollen werden pro Department gesetzt: über `/support-department set-leads`
+  oder den Button `Leiter setzen` in `/support-department-ui`.
+- Abgabe mit `/wochenbericht abgeben` (Modal, Markdown möglich, bis 3900 Zeichen).
+  Erneutes Absenden überschreibt die Abgabe; leeres Absenden löscht sie.
+- Abgaben zählen zur laufenden Kalenderwoche; nach dem Veröffentlichungstermin
+  beginnt automatisch die nächste Berichtswoche.
+- Veröffentlichung: Kopfzeile mit Kalenderwoche + ein Embed pro Department
+  (fehlende Abgaben werden als „Keine Abgabe" markiert).
+- Konfiguration über das Setup-Panel: Channel, Wochentag, Uhrzeit sowie eine
+  optionale Erinnerung (Standard: 24 h vorher pingt der Bot die Leiter-Rollen
+  der Departments ohne Abgabe).
+- `/wochenbericht vorschau` zeigt Leitern und Admins die aktuelle Fassung,
+  `/wochenbericht veroeffentlichen` veröffentlicht sofort (nur Admins).
+- Wurde der Termin verpasst (Bot offline), wird die Vorwoche automatisch
+  nachveröffentlicht, sobald der Bot wieder läuft.
 
 ## Reaction-Roles
 

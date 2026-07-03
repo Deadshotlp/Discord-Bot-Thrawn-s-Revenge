@@ -4,6 +4,10 @@ import {
   ButtonStyle,
   EmbedBuilder
 } from "discord.js";
+import {
+  formatPublishSchedule,
+  normalizeWeeklyReportConfig
+} from "../../weeklyReport/services/config.js";
 
 export const SETUP_TOGGLE_PREFIX = "setup_toggle_module:";
 export const SETUP_CONFIG_PREFIX = "setup_config_module:";
@@ -72,6 +76,15 @@ function buildStatusText(moduleName, moduleState) {
     ].join("\n");
   }
 
+  if (moduleName === "weekly-report") {
+    const config = normalizeWeeklyReportConfig(moduleState?.config);
+    return [
+      activeText,
+      `Channel: ${toChannelMention(config.publishChannelId)}`,
+      `Termin: ${formatPublishSchedule(config)}`
+    ].join("\n");
+  }
+
   if (moduleName !== "verify") {
     return activeText;
   }
@@ -125,55 +138,37 @@ export function buildSetupPanelPayload(client, guildId) {
     toggleRows.push(row);
   }
 
-  const configRow = new ActionRowBuilder();
-  configRow.addComponents(
+  const configurableModules = [
+    { name: "verify", label: "Verify konfigurieren" },
+    { name: "support", label: "Support konfigurieren" },
+    { name: "content-creator", label: "Content Creator konfigurieren" },
+    { name: "server-status", label: "Server-Status konfigurieren" },
+    { name: "weekly-report", label: "Wochenberichte konfigurieren" }
+  ].filter(({ name }) => managedModules.some((moduleDef) => moduleDef.name === name));
+
+  const configButtons = configurableModules.map(({ name, label }) => (
     new ButtonBuilder()
-      .setCustomId(`${SETUP_CONFIG_PREFIX}verify`)
-      .setLabel("Verify konfigurieren")
+      .setCustomId(`${SETUP_CONFIG_PREFIX}${name}`)
+      .setLabel(label)
       .setStyle(ButtonStyle.Primary)
-      .setDisabled(!moduleConfigStore.isModuleEnabled(guildId, "verify"))
-  );
+      .setDisabled(!moduleConfigStore.isModuleEnabled(guildId, name))
+  ));
 
-  if (managedModules.some((moduleDef) => moduleDef.name === "support")) {
-    configRow.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`${SETUP_CONFIG_PREFIX}support`)
-        .setLabel("Support konfigurieren")
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(!moduleConfigStore.isModuleEnabled(guildId, "support"))
-    );
-  }
-
-  if (managedModules.some((moduleDef) => moduleDef.name === "content-creator")) {
-    configRow.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`${SETUP_CONFIG_PREFIX}content-creator`)
-        .setLabel("Content Creator konfigurieren")
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(!moduleConfigStore.isModuleEnabled(guildId, "content-creator"))
-    );
-  }
-
-  if (managedModules.some((moduleDef) => moduleDef.name === "server-status")) {
-    configRow.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`${SETUP_CONFIG_PREFIX}server-status`)
-        .setLabel("Server-Status konfigurieren")
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(!moduleConfigStore.isModuleEnabled(guildId, "server-status"))
-    );
-  }
-
-  configRow.addComponents(
+  configButtons.push(
     new ButtonBuilder()
       .setCustomId(SETUP_REFRESH_ID)
       .setLabel("Status aktualisieren")
       .setStyle(ButtonStyle.Secondary)
   );
 
+  const configRows = [];
+  for (let index = 0; index < configButtons.length; index += 5) {
+    configRows.push(new ActionRowBuilder().addComponents(configButtons.slice(index, index + 5)));
+  }
+
   return {
     embeds: [embed],
-    components: [...toggleRows, configRow]
+    components: [...toggleRows, ...configRows]
   };
 }
 

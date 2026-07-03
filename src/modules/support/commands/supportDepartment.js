@@ -7,14 +7,17 @@ import {
   normalizeDepartments
 } from "../services/config.js";
 
-function formatDepartmentLine(department, isDefault) {
-  const roles = department.roleIds.length > 0
-    ? department.roleIds.map((roleId) => `<@&${roleId}>`).join(" ")
-    : "(keine Rollen)";
+function formatRoleMentions(roleIds, emptyText) {
+  return roleIds.length > 0
+    ? roleIds.map((roleId) => `<@&${roleId}>`).join(" ")
+    : emptyText;
+}
 
+function formatDepartmentLine(department, isDefault) {
   return [
     `${isDefault ? "[Default] " : ""}${department.name} (${department.id})`,
-    `Rollen: ${roles}`
+    `Rollen: ${formatRoleMentions(department.roleIds, "(keine Rollen)")}`,
+    `Leiter: ${formatRoleMentions(department.leadRoleIds, "(keine Leiter-Rollen)")}`
   ].join("\n");
 }
 
@@ -83,6 +86,17 @@ export const supportDepartmentCommand = {
         .setName("id")
         .setDescription("ID oder Name des Departments")
         .setRequired(true)))
+    .addSubcommand((subcommand) => subcommand
+      .setName("set-leads")
+      .setDescription("Setzt die Leiter-Rollen eines Departments (z. B. für Wochenberichte).")
+      .addStringOption((option) => option
+        .setName("id")
+        .setDescription("ID oder Name des Departments")
+        .setRequired(true))
+      .addStringOption((option) => option
+        .setName("rollen")
+        .setDescription("Leiter-Rollen-IDs oder Erwähnungen, leer = entfernen")
+        .setRequired(false)))
     .addSubcommand((subcommand) => subcommand
       .setName("set-default")
       .setDescription("Setzt das Standard-Department.")
@@ -198,6 +212,40 @@ export const supportDepartmentCommand = {
 
       await interaction.reply({
         content: `Department entfernt: ${departmentId}`,
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
+    if (subcommand === "set-leads") {
+      const departmentInput = interaction.options.getString("id", true).trim();
+      const targetDepartment = resolveDepartmentInput(departments, departmentInput);
+
+      if (!targetDepartment) {
+        await interaction.reply({
+          content: `Department nicht gefunden: ${departmentInput}`,
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+
+      const leadRoleIds = extractRoleIds(interaction.options.getString("rollen") || "");
+      const updatedDepartments = departments.map((department) => (
+        department.id === targetDepartment.id
+          ? { ...department, leadRoleIds }
+          : department
+      ));
+
+      moduleConfigStore.setModuleConfig(interaction.guildId, "support", {
+        departments: updatedDepartments,
+        defaultDepartmentId
+      });
+
+      await interaction.reply({
+        content: [
+          `Leiter-Rollen für ${targetDepartment.name} gesetzt:`,
+          formatRoleMentions(leadRoleIds, "(keine Leiter-Rollen)")
+        ].join("\n"),
         flags: MessageFlags.Ephemeral
       });
       return;

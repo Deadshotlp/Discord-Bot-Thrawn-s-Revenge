@@ -41,10 +41,15 @@ export function normalizeDepartment(rawDepartment) {
     ? rawDepartment.roleIds.map((roleId) => safeString(roleId)).filter(Boolean)
     : [];
 
+  const leadRoleIds = Array.isArray(rawDepartment.leadRoleIds)
+    ? rawDepartment.leadRoleIds.map((roleId) => safeString(roleId)).filter(Boolean)
+    : [];
+
   return {
     id,
     name,
-    roleIds: [...new Set(roleIds)]
+    roleIds: [...new Set(roleIds)],
+    leadRoleIds: [...new Set(leadRoleIds)]
   };
 }
 
@@ -146,4 +151,21 @@ export function hasDepartmentAccess(member, department) {
   }
 
   return roleIds.some((roleId) => member.roles.cache.has(roleId));
+}
+
+export function isDepartmentLead(member, department) {
+  if (!member) {
+    return false;
+  }
+
+  const leadRoleIds = Array.isArray(department?.leadRoleIds) ? department.leadRoleIds : [];
+  if (leadRoleIds.length === 0) {
+    return false;
+  }
+
+  return leadRoleIds.some((roleId) => member.roles.cache.has(roleId));
+}
+
+export function getLeadDepartments(member, departments) {
+  return normalizeDepartments(departments).filter((department) => isDepartmentLead(member, department));
 }
