@@ -1,6 +1,8 @@
 import { supportDepartmentCommand } from "./commands/supportDepartment.js";
 import { supportDepartmentUiCommand } from "./commands/supportDepartmentUi.js";
 import { supportTicketPanelCommand } from "./commands/supportTicketPanel.js";
+import { closeSupportCasesDb } from "./services/cases.js";
+import { closeSupportTicketsDb } from "./services/tickets.js";
 import { ensureSupportDefaults } from "./services/provisioning.js";
 import { scheduleClosedTicketDeletionsForGuild } from "./services/closedTicketCleanup.js";
 import {
@@ -132,6 +134,13 @@ async function handleSupportReady({ client }) {
   }
 }
 
+async function handleSupportShutdown() {
+  closeSupportTicketsDb();
+  closeSupportCasesDb();
+}
+
+handleSupportShutdown.alwaysAvailable = true;
+
 export const supportModule = {
   name: "support",
   defaultEnabled: false,
@@ -154,6 +163,7 @@ export const supportModule = {
     interactionCreate: [handleSupportInteraction],
     guildCreate: [handleSupportGuildCreate],
     ready: [handleSupportReady],
-    voiceStateUpdate: [handleSupportVoiceStateUpdate]
+    voiceStateUpdate: [handleSupportVoiceStateUpdate],
+    shutdown: [handleSupportShutdown]
   }
 };
