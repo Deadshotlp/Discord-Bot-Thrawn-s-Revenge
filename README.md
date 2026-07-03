@@ -62,6 +62,8 @@ z. B. für Deployments mit persistentem Volume.
 - `/reaction-role`
 - `/server-status`
 - `/wochenbericht`
+- `/meeting`
+- `/meeting-admin`
 
 ## Modulverwaltung
 
@@ -127,6 +129,28 @@ Wenn `AUTO_SETUP_CHANNEL_ON_GUILD_JOIN=true` gesetzt ist:
   `/wochenbericht veroeffentlichen` veröffentlicht sofort (nur Admins).
 - Wurde der Termin verpasst (Bot offline), wird die Vorwoche automatisch
   nachveröffentlicht, sobald der Bot wieder läuft.
+
+## Meetings (regelmäßige Treffen)
+
+- Beliebig viele Meetings pro Server, konfiguriert über `/meeting-admin` (Admins)
+  oder den Setup-Panel-Button „Meetings verwalten".
+- Pro Meeting einstellbar: Name, Ankündigungs-Channel, Voice-Channel, Rhythmus
+  (Wochentag + Uhrzeit + Intervall in Wochen), Vorlaufzeit, Teilnehmer-Rollen
+  (dürfen an-/abmelden und zählen in der Auswertung) und Organisator-Rollen.
+- **Ankündigung:** Zum Vorlaufzeitpunkt (Standard 24 h vorher) postet der Bot eine
+  Ankündigung mit Agenda und Buttons „Anmelden" / „Abmelden" / „Thema einreichen"
+  und pingt die Teilnehmer-Rollen.
+- **An-/Abmeldung:** Über die Buttons oder `/meeting anmelden` / `/meeting abmelden`.
+  Die Listen werden in der Ankündigung live aktualisiert.
+- **Auswertung:** 5 Minuten nach Beginn postet der Bot automatisch die Anwesenheit:
+  - ✅ **Anwesend** = im Voice-Channel
+  - 📝 **Entschuldigt** = vorher abgemeldet
+  - ❌ **Unentschuldigt** = angemeldet, aber nicht erschienen und nicht abgemeldet
+- **Themen:** Teilnehmer reichen Themen per Button oder `/meeting thema` ein. Nach
+  der Sitzung werden einmalige Themen verbraucht; als **Dauerthema** markierte
+  Themen (🔁) kehren automatisch wieder. Organisatoren ändern Reihenfolge und
+  Dauerthema-Status unter „Themen" im Meeting-Menü.
+- `/meeting status` zeigt Termin, Agenda und An-/Abmeldezahlen.
 
 ## Reaction-Roles
 

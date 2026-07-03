@@ -31,6 +31,8 @@ import { normalizeServerStatusConfig } from "../serverStatus/services/config.js"
 import { buildServerStatusSetupModal } from "../serverStatus/services/panel.js";
 import { normalizeWeeklyReportConfig } from "../weeklyReport/services/config.js";
 import { buildWeeklyReportSetupModal } from "../weeklyReport/services/panel.js";
+import { normalizeMeetingModuleConfig } from "../meeting/services/config.js";
+import { buildMeetingManagementPayload } from "../meeting/services/adminUi.js";
 
 function extractSnowflake(raw) {
   const text = String(raw || "").trim();
@@ -257,6 +259,16 @@ async function handleSetupInteraction({ client, interaction }) {
       if (moduleName === "weekly-report") {
         const weeklyReportState = moduleConfigStore.getModuleState(interaction.guildId, "weekly-report");
         await interaction.showModal(buildWeeklyReportSetupModal(normalizeWeeklyReportConfig(weeklyReportState?.config)));
+        return;
+      }
+
+      if (moduleName === "meeting") {
+        const meetingState = moduleConfigStore.getModuleState(interaction.guildId, "meeting");
+        const { meetings } = normalizeMeetingModuleConfig(meetingState?.config);
+        await interaction.reply({
+          ...buildMeetingManagementPayload(meetings),
+          flags: MessageFlags.Ephemeral
+        });
         return;
       }
 

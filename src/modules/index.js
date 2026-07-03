@@ -6,6 +6,7 @@ import { reactionRoleModule } from "./reactionRole/index.js";
 import { contentCreatorModule } from "./contentCreator/index.js";
 import { serverStatusModule } from "./serverStatus/index.js";
 import { weeklyReportModule } from "./weeklyReport/index.js";
+import { meetingModule } from "./meeting/index.js";
 
 export const modules = [
   systemModule,
@@ -15,5 +16,6 @@ export const modules = [
   reactionRoleModule,
   contentCreatorModule,
   serverStatusModule,
-  weeklyReportModule
+  weeklyReportModule,
+  meetingModule
 ];

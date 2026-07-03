@@ -85,6 +85,14 @@ function buildStatusText(moduleName, moduleState) {
     ].join("\n");
   }
 
+  if (moduleName === "meeting") {
+    const meetings = Array.isArray(moduleState?.config?.meetings) ? moduleState.config.meetings : [];
+    return [
+      activeText,
+      `Meetings: ${meetings.length}`
+    ].join("\n");
+  }
+
   if (moduleName !== "verify") {
     return activeText;
   }
@@ -143,7 +151,8 @@ export function buildSetupPanelPayload(client, guildId) {
     { name: "support", label: "Support konfigurieren" },
     { name: "content-creator", label: "Content Creator konfigurieren" },
     { name: "server-status", label: "Server-Status konfigurieren" },
-    { name: "weekly-report", label: "Wochenberichte konfigurieren" }
+    { name: "weekly-report", label: "Wochenberichte konfigurieren" },
+    { name: "meeting", label: "Meetings verwalten" }
   ].filter(({ name }) => managedModules.some((moduleDef) => moduleDef.name === name));
 
   const configButtons = configurableModules.map(({ name, label }) => (
