@@ -178,7 +178,7 @@ export function parseReactionRoleMappingLines(rawInput) {
   for (const [index, line] of lines.entries()) {
     const match = line.match(/^(.+?)\s*(?:=|->|\|)\s*(.+)$/);
     if (!match) {
-      errors.push(`Zeile ${index + 1}: Format muss \"Emoji = Rolle\" sein.`);
+      errors.push(`Zeile ${index + 1}: Format muss "Emoji = Rolle" sein.`);
       continue;
     }
 

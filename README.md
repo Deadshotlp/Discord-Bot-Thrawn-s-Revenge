@@ -6,76 +6,20 @@ Der Bot wurde vollständig zurückgesetzt und als modulare Basisstruktur neu auf
 
 Ein sauberer Startpunkt, auf dem neue Features als eigenständige Module entwickelt werden können.
 
-## Neue Struktur
+## Struktur
 
 ```text
 src/
-  config/
-    env.js
-  core/
-    logger.js
-    moduleRuntime.js
-    permissions.js
-  events/
-    registerEvents.js
-    ready.js
-    interactionCreate.js
-    guildCreate.js
-    voiceStateUpdate.js
-  modules/
-    index.js
-    support/
-      index.js
-      commands/
-        supportDepartment.js
-      services/
-        cases.js
-        config.js
-        panel.js
-        provisioning.js
-    verify/
-      index.js
-      commands/
-        verifyPanel.js
-      services/
-        panel.js
-    system/
-      index.js
-      commands/
-        ping.js
-        botInfo.js
-    setup/
-      index.js
-      commands/
-        setupPanel.js
-      services/
-        ensureSetupChannel.js
-        panel.js
-    reactionRole/
-      index.js
-      commands/
-        reactionRole.js
-      services/
-        config.js
-    contentCreator/
-      index.js
-      services/
-        config.js
-        panel.js
-        polling.js
-        providers.js
-    serverStatus/
-      index.js
-      commands/
-        serverStatus.js
-      services/
-        chart.js
-        config.js
-        history.js
-        panel.js
-        query.js
-  index.js
+  config/    Env-Parsing (.env)
+  core/      Logger, Modul-Laufzeit, Config-Store, Berechtigungen, gemeinsame Utils
+  events/    Discord-Event-Registrierung und Dispatch an die Module
+  modules/   Ein Ordner pro Feature (support, verify, setup, reactionRole,
+             contentCreator, serverStatus, system) mit jeweils
+             index.js, commands/, services/ und optional handlers/
+  index.js   Einstiegspunkt (Client, Login, Graceful Shutdown)
 ```
+
+Jedes Modul exportiert `name`, `defaultEnabled`, `defaultConfig`, `commands` und `events` und wird in `src/modules/index.js` registriert.
 
 ## Schnellstart
 
@@ -92,6 +36,19 @@ npm install
 ```bash
 npm run start
 ```
+
+## Entwicklung
+
+- `npm run dev` – Start mit Auto-Reload bei Dateiänderungen.
+- `npm run lint` – ESLint über das gesamte Projekt.
+- `npm test` – Testsuite (Node-Test-Runner).
+- Bei jedem Push läuft die CI (GitHub Actions) mit Lint und Tests.
+
+## Daten
+
+Konfiguration und Datenbanken (SQLite) liegen im Verzeichnis `data/` im Projektordner.
+Über die Umgebungsvariable `DATA_DIR` kann ein anderes Verzeichnis gesetzt werden –
+z. B. für Deployments mit persistentem Volume.
 
 ## Verfügbare Commands
 
