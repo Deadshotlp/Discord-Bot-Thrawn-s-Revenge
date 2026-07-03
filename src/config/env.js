@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { parseSnowflakeList } from "../core/discordUtil.js";
 
 function parseBoolean(value, fallback = false) {
   if (value === undefined || value === null || value === "") {
@@ -15,16 +16,6 @@ function parseInteger(value, fallback) {
   }
 
   return parsed;
-}
-
-function parseSnowflakeList(value) {
-  const text = String(value || "").trim();
-  if (!text) {
-    return [];
-  }
-
-  const matches = text.match(/\d{16,20}/g) || [];
-  return [...new Set(matches)];
 }
 
 function getRequiredEnv(name) {
