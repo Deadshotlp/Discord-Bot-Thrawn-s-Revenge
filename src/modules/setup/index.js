@@ -29,6 +29,8 @@ import { normalizeContentCreatorConfig } from "../contentCreator/services/config
 import { buildContentCreatorSetupModal } from "../contentCreator/services/panel.js";
 import { normalizeServerStatusConfig } from "../serverStatus/services/config.js";
 import { buildServerStatusSetupModal } from "../serverStatus/services/panel.js";
+import { normalizeWeeklyReportConfig } from "../weeklyReport/services/config.js";
+import { buildWeeklyReportSetupModal } from "../weeklyReport/services/panel.js";
 
 function extractSnowflake(raw) {
   const text = String(raw || "").trim();
@@ -249,6 +251,12 @@ async function handleSetupInteraction({ client, interaction }) {
       if (moduleName === "server-status") {
         const serverStatusState = moduleConfigStore.getModuleState(interaction.guildId, "server-status");
         await interaction.showModal(buildServerStatusSetupModal(normalizeServerStatusConfig(serverStatusState?.config)));
+        return;
+      }
+
+      if (moduleName === "weekly-report") {
+        const weeklyReportState = moduleConfigStore.getModuleState(interaction.guildId, "weekly-report");
+        await interaction.showModal(buildWeeklyReportSetupModal(normalizeWeeklyReportConfig(weeklyReportState?.config)));
         return;
       }
 
