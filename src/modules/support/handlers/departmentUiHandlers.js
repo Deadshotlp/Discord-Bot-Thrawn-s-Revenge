@@ -12,15 +12,19 @@ import {
   SUPPORT_DEPT_UI_ADD_MODAL_ID,
   SUPPORT_DEPT_UI_ADD_NAME_INPUT_ID,
   SUPPORT_DEPT_UI_ADD_ROLES_INPUT_ID,
+  SUPPORT_DEPT_UI_LEADS_INPUT_ID,
+  SUPPORT_DEPT_UI_LEADS_MODAL_PREFIX,
   SUPPORT_DEPT_UI_REFRESH_BUTTON_ID,
   SUPPORT_DEPT_UI_REMOVE_PREFIX,
   SUPPORT_DEPT_UI_ROLES_INPUT_ID,
   SUPPORT_DEPT_UI_ROLES_MODAL_PREFIX,
   SUPPORT_DEPT_UI_SELECT_ID,
   SUPPORT_DEPT_UI_SET_DEFAULT_PREFIX,
+  SUPPORT_DEPT_UI_SET_LEADS_PREFIX,
   SUPPORT_DEPT_UI_SET_ROLES_PREFIX,
   buildSupportDepartmentActionsPayload,
   buildSupportDepartmentAddModal,
+  buildSupportDepartmentLeadsModal,
   buildSupportDepartmentManagementPayload,
   buildSupportDepartmentRolesModal
 } from "../services/departmentUi.js";
@@ -43,6 +47,7 @@ export async function handleDepartmentUiInteraction({ client, interaction }) {
     || interaction.customId === SUPPORT_DEPT_UI_REFRESH_BUTTON_ID
     || interaction.customId.startsWith(SUPPORT_DEPT_UI_SET_DEFAULT_PREFIX)
     || interaction.customId.startsWith(SUPPORT_DEPT_UI_SET_ROLES_PREFIX)
+    || interaction.customId.startsWith(SUPPORT_DEPT_UI_SET_LEADS_PREFIX)
     || interaction.customId.startsWith(SUPPORT_DEPT_UI_REMOVE_PREFIX)
   );
 
@@ -50,6 +55,7 @@ export async function handleDepartmentUiInteraction({ client, interaction }) {
   const isDepartmentModal = interaction.isModalSubmit() && (
     interaction.customId === SUPPORT_DEPT_UI_ADD_MODAL_ID
     || interaction.customId.startsWith(SUPPORT_DEPT_UI_ROLES_MODAL_PREFIX)
+    || interaction.customId.startsWith(SUPPORT_DEPT_UI_LEADS_MODAL_PREFIX)
   );
 
   if (!isDepartmentButton && !isDepartmentSelect && !isDepartmentModal) {
@@ -136,6 +142,21 @@ export async function handleDepartmentUiInteraction({ client, interaction }) {
     }
 
     await interaction.showModal(buildSupportDepartmentRolesModal(selectedDepartment));
+    return true;
+  }
+
+  if (interaction.isButton() && interaction.customId.startsWith(SUPPORT_DEPT_UI_SET_LEADS_PREFIX)) {
+    const departmentId = interaction.customId.slice(SUPPORT_DEPT_UI_SET_LEADS_PREFIX.length);
+    const selectedDepartment = getDepartmentById(departments, departmentId);
+    if (!selectedDepartment) {
+      await interaction.reply({
+        content: "Department nicht gefunden.",
+        flags: MessageFlags.Ephemeral
+      });
+      return true;
+    }
+
+    await interaction.showModal(buildSupportDepartmentLeadsModal(selectedDepartment));
     return true;
   }
 
@@ -243,6 +264,40 @@ export async function handleDepartmentUiInteraction({ client, interaction }) {
 
     await interaction.reply({
       content: `Rollen für ${selectedDepartment.name} wurden aktualisiert.`,
+      flags: MessageFlags.Ephemeral
+    });
+    return true;
+  }
+
+  if (interaction.isModalSubmit() && interaction.customId.startsWith(SUPPORT_DEPT_UI_LEADS_MODAL_PREFIX)) {
+    const departmentId = interaction.customId.slice(SUPPORT_DEPT_UI_LEADS_MODAL_PREFIX.length);
+    const selectedDepartment = getDepartmentById(departments, departmentId);
+    if (!selectedDepartment) {
+      await interaction.reply({
+        content: "Department nicht gefunden.",
+        flags: MessageFlags.Ephemeral
+      });
+      return true;
+    }
+
+    const leadsRaw = interaction.fields.getTextInputValue(SUPPORT_DEPT_UI_LEADS_INPUT_ID) || "";
+    const leadRoleIds = extractRoleIds(leadsRaw);
+
+    const updatedDepartments = departments.map((department) => {
+      if (department.id !== departmentId) {
+        return department;
+      }
+
+      return {
+        ...department,
+        leadRoleIds
+      };
+    });
+
+    updateSupportDepartments(moduleConfigStore, interaction.guildId, currentConfig, updatedDepartments, defaultDepartmentId);
+
+    await interaction.reply({
+      content: `Leiter-Rollen für ${selectedDepartment.name} wurden aktualisiert.`,
       flags: MessageFlags.Ephemeral
     });
     return true;
