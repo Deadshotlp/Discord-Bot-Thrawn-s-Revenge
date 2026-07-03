@@ -12,7 +12,7 @@ let youtubeQuotaBlockedUntil = 0;
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, options);
   const text = await response.text();
-  let payload = null;
+  let payload;
 
   try {
     payload = text ? JSON.parse(text) : null;
@@ -75,6 +75,23 @@ export async function fetchYouTubeChannel(env, channelInput) {
 
     if (!handle) {
       return null;
+    }
+
+    // channels?forHandle kostet 1 Quota-Einheit, search 100 –
+    // daher zuerst als Handle auflösen und search nur als Fallback nutzen.
+    const handleUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
+    handleUrl.searchParams.set("part", "snippet");
+    handleUrl.searchParams.set("forHandle", handle);
+    handleUrl.searchParams.set("key", env.youtubeApiKey);
+
+    const handleData = await fetchJson(handleUrl.toString()).catch(() => null);
+    const handleItem = Array.isArray(handleData?.items) ? handleData.items[0] : null;
+
+    if (handleItem?.id) {
+      return {
+        channelId: handleItem.id,
+        title: handleItem.snippet?.title || handleItem.id
+      };
     }
 
     const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");

@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "module-config-test-"));
-process.chdir(tempDir);
+process.env.DATA_DIR = path.join(tempDir, "data");
 
 const { ModuleConfigStore } = await import("../src/core/moduleConfigStore.js");
 

@@ -1,5 +1,4 @@
 import { MessageFlags } from "discord.js";
-import { buildCommandRegistry } from "../core/moduleRuntime.js";
 import { runEventHandlers } from "../core/moduleRuntime.js";
 
 export async function handleInteractionCreate(client, interaction) {
@@ -48,18 +47,8 @@ export async function handleInteractionCreate(client, interaction) {
   }
 
   if (interaction.isChatInputCommand()) {
-    let command = commandRegistry.get(interaction.commandName);
-    let moduleName = commandToModule.get(interaction.commandName);
-
-    if (!command) {
-      const rebuilt = buildCommandRegistry(modules);
-      client.botContext.commandRegistry = rebuilt.commandRegistry;
-      client.botContext.commandPayload = rebuilt.commandPayload;
-      client.botContext.commandToModule = rebuilt.commandToModule;
-
-      command = rebuilt.commandRegistry.get(interaction.commandName);
-      moduleName = rebuilt.commandToModule.get(interaction.commandName);
-    }
+    const command = commandRegistry.get(interaction.commandName);
+    const moduleName = commandToModule.get(interaction.commandName);
 
     if (!command) {
       await interaction.reply({

@@ -21,16 +21,6 @@ export const REACTION_ROLE_PANEL_TITLE_INPUT_ID = "reaction_role_panel_title";
 export const REACTION_ROLE_PANEL_TEXT_INPUT_ID = "reaction_role_panel_text";
 export const REACTION_ROLE_PANEL_MAPPINGS_INPUT_ID = "reaction_role_panel_mappings";
 
-function toSnowflake(value) {
-  const text = String(value || "").trim();
-  if (!text) {
-    return "";
-  }
-
-  const matches = text.match(/\d{16,20}/g) || [];
-  return matches.at(-1) || "";
-}
-
 function parseMessageTarget(value) {
   const text = String(value || "").trim();
   const matches = text.match(/\d{16,20}/g) || [];

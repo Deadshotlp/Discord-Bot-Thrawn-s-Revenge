@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "server-status-history-test-"));
-process.chdir(tempDir);
+process.env.DATA_DIR = path.join(tempDir, "data");
 
 const {
   buildDailyPlayerStats,

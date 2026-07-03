@@ -51,7 +51,6 @@ export function parseA2SInfoResponse(body) {
   const maxPlayers = body.readUInt8(offset);
   offset += 1;
   const bots = body.readUInt8(offset);
-  offset += 1;
 
   return {
     name: name.value,

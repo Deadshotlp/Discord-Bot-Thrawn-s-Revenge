@@ -1,4 +1,5 @@
-import { ChannelType, MessageFlags } from "discord.js";
+import { MessageFlags } from "discord.js";
+import { extractSnowflake, isTextAnnouncementChannel } from "../../core/discordUtil.js";
 import { canManageServer } from "../../core/permissions.js";
 import { normalizeContentCreatorConfig } from "./services/config.js";
 import { runContentCreatorPollCycle } from "./services/polling.js";
@@ -61,15 +62,14 @@ async function handleContentCreatorReady({ client }) {
   }, intervalMs);
 }
 
-function toSnowflake(value) {
-  const text = String(value || "").trim();
-  const matches = text.match(/\d{16,20}/g) || [];
-  return matches.at(-1) || "";
+async function handleContentCreatorShutdown() {
+  if (runtime.timer) {
+    clearInterval(runtime.timer);
+    runtime.timer = null;
+  }
 }
 
-function isTextAnnouncementChannel(channel) {
-  return Boolean(channel && [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type));
-}
+handleContentCreatorShutdown.alwaysAvailable = true;
 
 async function handleContentCreatorInteraction({ client, interaction }) {
   if (!interaction.isModalSubmit() || interaction.customId !== CONTENT_CREATOR_SETUP_MODAL_ID) {
@@ -114,7 +114,7 @@ async function handleContentCreatorInteraction({ client, interaction }) {
   let notifyChannelId = "";
 
   if (channelInput) {
-    const channelId = toSnowflake(channelInput);
+    const channelId = extractSnowflake(channelInput);
     const channel = interaction.guild.channels.cache.get(channelId)
       || (await interaction.guild.channels.fetch(channelId).catch(() => null));
 
@@ -131,8 +131,8 @@ async function handleContentCreatorInteraction({ client, interaction }) {
   const youtubeRoleInput = interaction.fields.getTextInputValue(CONTENT_CREATOR_SETUP_YOUTUBE_ROLE_INPUT_ID)?.trim() || "";
   const twitchRoleInput = interaction.fields.getTextInputValue(CONTENT_CREATOR_SETUP_TWITCH_ROLE_INPUT_ID)?.trim() || "";
 
-  const youtubeRoleId = toSnowflake(youtubeRoleInput);
-  const twitchRoleId = toSnowflake(twitchRoleInput);
+  const youtubeRoleId = extractSnowflake(youtubeRoleInput);
+  const twitchRoleId = extractSnowflake(twitchRoleInput);
 
   if (youtubeRoleInput && !youtubeRoleId) {
     await interaction.editReply({
@@ -259,6 +259,7 @@ export const contentCreatorModule = {
   commands: [],
   events: {
     ready: [handleContentCreatorReady],
-    interactionCreate: [handleContentCreatorInteraction]
+    interactionCreate: [handleContentCreatorInteraction],
+    shutdown: [handleContentCreatorShutdown]
   }
 };

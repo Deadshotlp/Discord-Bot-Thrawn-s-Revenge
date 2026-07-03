@@ -2,9 +2,9 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ChannelType,
   EmbedBuilder
 } from "discord.js";
+import { resolveTextAnnouncementChannel } from "../../../core/discordUtil.js";
 import { normalizeContentCreatorConfig } from "./config.js";
 import {
   fetchLatestYouTubeVideo,
@@ -41,21 +41,6 @@ const TWITCH_PURPLE = 0x9146FF;
 const TWITCH_ICON_URL = "https://static.twitchcdn.net/assets/favicon-32-e29e246c157142c94346.png";
 const YOUTUBE_RED = 0xFF0000;
 const YOUTUBE_ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/4/42/YouTube_icon_%282013-2017%29.png";
-
-async function resolveNotifyChannel(guild, channelId) {
-  if (!channelId) {
-    return null;
-  }
-
-  const channel = guild.channels.cache.get(channelId)
-    || (await guild.channels.fetch(channelId).catch(() => null));
-
-  if (!channel || ![ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type)) {
-    return null;
-  }
-
-  return channel;
-}
 
 function renderTemplate(template, fallbackTemplate, variables) {
   const activeTemplate = String(template || "").trim() || fallbackTemplate;
@@ -238,7 +223,7 @@ export async function runContentCreatorPollCycle(client, options = {}) {
       continue;
     }
 
-    const notifyChannel = await resolveNotifyChannel(guild, config.notifyChannelId);
+    const notifyChannel = await resolveTextAnnouncementChannel(guild, config.notifyChannelId);
     if (!notifyChannel) {
       continue;
     }
@@ -322,11 +307,10 @@ export async function runContentCreatorPollCycle(client, options = {}) {
           if (isNewLive) {
             await notifyChannel.send(buildTwitchMessage(source, stream, twitchRoleId));
             notificationsSent += 1;
+            source.wasLive = true;
+            source.lastStreamId = stream.streamId;
+            changed = true;
           }
-
-          source.wasLive = true;
-          source.lastStreamId = stream.streamId;
-          changed = true;
         } catch (error) {
           errors += 1;
           logger.warn("ContentCreator: Twitch Poll fehlgeschlagen", {

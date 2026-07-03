@@ -1,9 +1,11 @@
-import { ChannelType, MessageFlags } from "discord.js";
+import { MessageFlags } from "discord.js";
+import { extractSnowflake, resolveTextAnnouncementChannel } from "../../core/discordUtil.js";
 import { canManageServer } from "../../core/permissions.js";
 import { serverStatusCommand } from "./commands/serverStatus.js";
 import { normalizeServerHost, normalizeServerPort, normalizeServerStatusConfig } from "./services/config.js";
 import {
   buildDailyPlayerStats,
+  closeServerStatusHistoryDb,
   getServerStatusSnapshotsSince,
   pruneServerStatusSnapshotsOlderThan,
   recordServerStatusSnapshot
@@ -11,7 +13,6 @@ import {
 import {
   buildServerStatusPanelPayload,
   buildServerStatusPanelPayloadWithoutButton,
-  buildServerStatusSetupModal,
   SERVER_STATUS_SETUP_CHANNEL_INPUT_ID,
   SERVER_STATUS_SETUP_HOST_INPUT_ID,
   SERVER_STATUS_SETUP_MODAL_ID,
@@ -32,21 +33,6 @@ function getPollIntervalMs(env) {
   const seconds = Number.parseInt(String(env.serverStatusPollIntervalSeconds || 300), 10);
   const safeSeconds = Number.isInteger(seconds) ? Math.max(60, seconds) : 300;
   return safeSeconds * 1000;
-}
-
-async function resolveStatusChannel(guild, channelId) {
-  if (!channelId) {
-    return null;
-  }
-
-  const channel = guild.channels.cache.get(channelId)
-    || (await guild.channels.fetch(channelId).catch(() => null));
-
-  if (!channel || ![ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type)) {
-    return null;
-  }
-
-  return channel;
 }
 
 async function sendPanelPayload(channel, payload, storedMessageId) {
@@ -85,7 +71,7 @@ async function pollGuild(client, guild) {
     lastMaxPlayers: status.online ? status.maxPlayers : 0
   });
 
-  const statusChannel = await resolveStatusChannel(guild, config.statusChannelId);
+  const statusChannel = await resolveTextAnnouncementChannel(guild, config.statusChannelId);
   if (!statusChannel) {
     return;
   }
@@ -198,8 +184,8 @@ async function handleServerStatusInteraction({ client, interaction }) {
 
   let statusChannelId = "";
   if (channelInput) {
-    const channelId = (channelInput.match(/\d{16,20}/g) || []).at(-1) || "";
-    const channel = await resolveStatusChannel(interaction.guild, channelId);
+    const channelId = extractSnowflake(channelInput);
+    const channel = await resolveTextAnnouncementChannel(interaction.guild, channelId);
     if (!channel) {
       await interaction.reply({
         content: "Status-Channel ist ungültig. Bitte ID oder #Erwähnung eines Textkanals nutzen.",
@@ -236,6 +222,17 @@ async function handleServerStatusInteraction({ client, interaction }) {
 
 handleServerStatusInteraction.alwaysAvailable = true;
 
+async function handleServerStatusShutdown() {
+  if (runtime.timer) {
+    clearInterval(runtime.timer);
+    runtime.timer = null;
+  }
+
+  closeServerStatusHistoryDb();
+}
+
+handleServerStatusShutdown.alwaysAvailable = true;
+
 export const serverStatusModule = {
   name: "server-status",
   defaultEnabled: false,
@@ -252,6 +249,7 @@ export const serverStatusModule = {
   commands: [serverStatusCommand],
   events: {
     ready: [handleServerStatusReady],
-    interactionCreate: [handleServerStatusInteraction]
+    interactionCreate: [handleServerStatusInteraction],
+    shutdown: [handleServerStatusShutdown]
   }
 };
