@@ -110,6 +110,42 @@ Wenn `AUTO_SETUP_CHANNEL_ON_GUILD_JOIN=true` gesetzt ist:
 - Transkript (erstellt eine Falldatei im Verwaltungschannel)
 - Departments können mit `/support-department` (Slash-Command) oder `/support-department-ui` (Interface) verwaltet werden.
 
+## Sprach-Transkripte (Support-Talks)
+
+Optionale Funktion: Support-Gespräche im Talk-Channel werden lokal transkribiert
+(kein Cloud-Dienst, keine laufenden Kosten). Der Bot nutzt dafür `whisper.cpp`.
+
+**Ablauf**
+
+- Nach dem Claim postet der Bot im Talk-Channel eine Zustimmungs-Anfrage.
+- Die Aufnahme startet **erst, wenn alle Teilnehmer zustimmen** (Button); es wird
+  nur aufgenommen, wer zugestimmt hat. Ein Indikator zeigt die laufende Aufnahme an.
+- Beim Schließen des Falls (oder über „Aufnahme beenden") wird das Gespräch
+  transkribiert und als Datei im Transkript-/Verwaltungs-Channel gepostet.
+- Die Audio-Daten werden nach der Transkription gelöscht; nur der Text bleibt.
+
+> **Rechtlicher Hinweis:** Das Aufzeichnen von Gesprächen ohne Einwilligung aller
+> Beteiligten ist in Deutschland strafbar (§ 201 StGB). Die Zustimmungsabfrage darf
+> nicht umgangen werden.
+
+**Einrichtung (auch im Wings-/Pterodactyl-Container)**
+
+Es wird keine Root-Installation benötigt – Binary und Modell liegen einfach im
+Server-Verzeichnis:
+
+1. Statische `whisper.cpp`-Binary (Release „whisper-cli"/„main") ins Server-Verzeichnis
+   legen und ausführbar machen (`chmod +x`).
+2. Ein Modell herunterladen, z. B. `ggml-medium-q5_0.bin` (sehr gute Deutsch-Qualität,
+   ~1,2 GB RAM bei Transkription) oder `ggml-small-q5_1.bin` (~600 MB).
+3. In der `.env` setzen:
+   - `WHISPER_BINARY_PATH=/home/container/whisper-cli`
+   - `WHISPER_MODEL_PATH=/home/container/models/ggml-medium-q5_0.bin`
+   - optional `WHISPER_THREADS` (Standard 2) und `WHISPER_LANGUAGE` (Standard `de`).
+
+Sind beide Pfade gesetzt und die Dateien vorhanden, aktiviert sich das Feature
+automatisch. Transkriptionen laufen seriell in einer Warteschlange, damit der
+Bot-Prozess nicht überlastet wird.
+
 ## Wochenberichte
 
 - Die Leiter der Support-Departments geben formatierte Textblöcke ab; zum konfigurierten

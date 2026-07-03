@@ -22,6 +22,9 @@ import {
 } from "../services/panel.js";
 import { canEscalateCase, canHandleCase } from "../services/supportPermissions.js";
 import { updateCaseMessage } from "./voiceCaseHandlers.js";
+import { offerRecordingConsent } from "./recordingHandlers.js";
+import { finalizeVoiceTranscript } from "../services/voiceTranscript.js";
+import { getRecordingSession } from "../services/voiceRecording.js";
 
 export async function handleClaimInteraction({ client, interaction, caseId }) {
   const { moduleConfigStore, env } = client.botContext;
@@ -101,6 +104,8 @@ export async function handleClaimInteraction({ client, interaction, caseId }) {
       flags: MessageFlags.Ephemeral
     });
   }
+
+  await offerRecordingConsent(client, interaction.guild, claimedCase, talkChannel);
 }
 
 export async function handleEscalateInteraction({ client, interaction, caseId }) {
@@ -222,6 +227,16 @@ export async function handleCloseInteraction({ client, interaction, caseId }) {
     return;
   }
 
+  const config = getSupportConfig(client.botContext.moduleConfigStore, interaction.guildId, client.botContext.env);
+  const hasRecording = Boolean(getRecordingSession(interaction.guildId, caseId));
+  let transcriptPosted = false;
+
+  if (hasRecording) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    // Transkript erstellen, solange die Teilnehmer noch im Voice-Channel sind.
+    transcriptPosted = await finalizeVoiceTranscript(client, interaction.guild, caseData, config);
+  }
+
   const userMember = await resolveGuildMember(interaction.guild, caseData.userId);
   const supporterMember = caseData.supporterId
     ? await resolveGuildMember(interaction.guild, caseData.supporterId)
@@ -237,13 +252,17 @@ export async function handleCloseInteraction({ client, interaction, caseId }) {
     return;
   }
 
-  const config = getSupportConfig(client.botContext.moduleConfigStore, interaction.guildId, client.botContext.env);
   await updateCaseMessage(interaction.guild, closedCase, config);
 
-  await interaction.reply({
-    content: "Fall wurde geschlossen. Nutzer und Supporter wurden aus Voice entfernt.",
-    flags: MessageFlags.Ephemeral
-  });
+  const closeMessage = transcriptPosted
+    ? "Fall wurde geschlossen. Gesprächstranskript wurde erstellt; Nutzer und Supporter wurden aus Voice entfernt."
+    : "Fall wurde geschlossen. Nutzer und Supporter wurden aus Voice entfernt.";
+
+  if (interaction.deferred) {
+    await interaction.editReply({ content: closeMessage });
+  } else {
+    await interaction.reply({ content: closeMessage, flags: MessageFlags.Ephemeral });
+  }
 }
 
 export async function handleTranscriptInteraction({ client, interaction, caseId }) {
