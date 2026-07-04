@@ -44,6 +44,10 @@ export async function finalizeVoiceTranscript(client, guild, caseData, config) {
 
   try {
     if (session.segments.length === 0) {
+      logger.warn("Support-Aufnahme: keine Audiodaten empfangen (0 Segmente)", {
+        guildId: guild.id,
+        caseId: caseData.id
+      });
       return false;
     }
 
@@ -60,6 +64,13 @@ export async function finalizeVoiceTranscript(client, guild, caseData, config) {
         text
       });
     }
+
+    logger.info("Support-Aufnahme ausgewertet", {
+      guildId: guild.id,
+      caseId: caseData.id,
+      segments: session.segments.length,
+      transkribiert: entries.length
+    });
 
     if (entries.length === 0) {
       return false;
