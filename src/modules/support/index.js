@@ -3,6 +3,7 @@ import { supportDepartmentUiCommand } from "./commands/supportDepartmentUi.js";
 import { supportTicketPanelCommand } from "./commands/supportTicketPanel.js";
 import { closeSupportCasesDb } from "./services/cases.js";
 import { closeSupportTicketsDb } from "./services/tickets.js";
+import { isSpeechToTextConfigured } from "./services/speechToText.js";
 import { ensureSupportDefaults } from "./services/provisioning.js";
 import { scheduleClosedTicketDeletionsForGuild } from "./services/closedTicketCleanup.js";
 import {
@@ -37,6 +38,13 @@ import {
   handleTicketOpenModalInteraction
 } from "./handlers/ticketInteractionHandlers.js";
 import { handleDepartmentUiInteraction } from "./handlers/departmentUiHandlers.js";
+import {
+  SUPPORT_RECORD_CONSENT_PREFIX,
+  SUPPORT_RECORD_STOP_PREFIX,
+  handleRecordingConsentInteraction,
+  handleRecordingStopInteraction
+} from "./handlers/recordingHandlers.js";
+import { cleanupVoiceTmpDir, stopAllRecordingSessions } from "./services/voiceRecording.js";
 
 async function handleSupportInteraction({ client, interaction }) {
   if (!interaction.inGuild()) {
@@ -92,6 +100,18 @@ async function handleSupportInteraction({ client, interaction }) {
     if (interaction.customId.startsWith(SUPPORT_TRANSCRIPT_PREFIX)) {
       const caseId = interaction.customId.slice(SUPPORT_TRANSCRIPT_PREFIX.length);
       await handleTranscriptInteraction({ client, interaction, caseId });
+      return;
+    }
+
+    if (interaction.customId.startsWith(SUPPORT_RECORD_CONSENT_PREFIX)) {
+      const caseId = interaction.customId.slice(SUPPORT_RECORD_CONSENT_PREFIX.length);
+      await handleRecordingConsentInteraction({ client, interaction, caseId });
+      return;
+    }
+
+    if (interaction.customId.startsWith(SUPPORT_RECORD_STOP_PREFIX)) {
+      const caseId = interaction.customId.slice(SUPPORT_RECORD_STOP_PREFIX.length);
+      await handleRecordingStopInteraction({ client, interaction, caseId });
     }
 
     return;
@@ -123,6 +143,11 @@ async function handleSupportGuildCreate({ client, guild }) {
 }
 
 async function handleSupportReady({ client }) {
+  // Verwaiste Audio-Segmente eines vorherigen Laufs entfernen.
+  if (isSpeechToTextConfigured(client.botContext.env)) {
+    cleanupVoiceTmpDir();
+  }
+
   for (const guild of client.guilds.cache.values()) {
     scheduleClosedTicketDeletionsForGuild(client, guild.id);
 
@@ -135,6 +160,8 @@ async function handleSupportReady({ client }) {
 }
 
 async function handleSupportShutdown() {
+  stopAllRecordingSessions();
+  cleanupVoiceTmpDir();
   closeSupportTicketsDb();
   closeSupportCasesDb();
 }
