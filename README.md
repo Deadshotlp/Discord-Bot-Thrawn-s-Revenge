@@ -130,21 +130,39 @@ Optionale Funktion: Support-Gespräche im Talk-Channel werden lokal transkribier
 
 **Einrichtung (auch im Wings-/Pterodactyl-Container)**
 
-Es wird keine Root-Installation benötigt – Binary und Modell liegen einfach im
-Server-Verzeichnis:
+Es wird keine Root-Installation benötigt – Binary, Bibliotheken und Modell liegen
+einfach im Server-Verzeichnis:
 
-1. Statische `whisper.cpp`-Binary (Release „whisper-cli"/„main") ins Server-Verzeichnis
-   legen und ausführbar machen (`chmod +x`).
+1. `whisper.cpp` besorgen. Am einfachsten das fertige Linux-Release
+   (`whisper-bin-ubuntu-x64` aus den GitHub-Releases): den **kompletten Ordner**
+   hochladen, denn `whisper-cli` ist dynamisch gelinkt und braucht die
+   mitgelieferten `.so`-Dateien (`libwhisper.so`, `libggml*.so`) **im selben Ordner**.
+   `whisper-cli` ausführbar machen (`chmod +x`).
 2. Ein Modell herunterladen, z. B. `ggml-medium-q5_0.bin` (sehr gute Deutsch-Qualität,
-   ~1,2 GB RAM bei Transkription) oder `ggml-small-q5_1.bin` (~600 MB).
+   ~1,5 GB RAM bei Transkription) oder `ggml-small-q5_1.bin` (~600 MB), z. B. von
+   `https://huggingface.co/ggerganov/whisper.cpp`.
 3. In der `.env` setzen:
-   - `WHISPER_BINARY_PATH=/home/container/whisper-cli`
-   - `WHISPER_MODEL_PATH=/home/container/models/ggml-medium-q5_0.bin`
+   - `WHISPER_BINARY_PATH=/home/container/whisper-bin-ubuntu-x64/whisper-cli`
+   - `WHISPER_MODEL_PATH=/home/container/ggml-medium-q5_0.bin`
+   - optional `WHISPER_LIB_DIR`, falls die `.so`-Dateien **nicht** neben der Binary
+     liegen (Standard: Ordner der Binary).
    - optional `WHISPER_THREADS` (Standard 2) und `WHISPER_LANGUAGE` (Standard `de`).
 
-Sind beide Pfade gesetzt und die Dateien vorhanden, aktiviert sich das Feature
-automatisch. Transkriptionen laufen seriell in einer Warteschlange, damit der
-Bot-Prozess nicht überlastet wird.
+Der Bot setzt beim Aufruf automatisch `LD_LIBRARY_PATH` auf den Ordner der Binary
+(bzw. `WHISPER_LIB_DIR`), damit die Bibliotheken gefunden werden. Sind beide Pfade
+gesetzt und die Dateien vorhanden, aktiviert sich das Feature automatisch.
+Transkriptionen laufen seriell in einer Warteschlange, damit der Bot-Prozess nicht
+überlastet wird.
+
+Vor dem Aktivieren im Container testen (findet die Binary ihre Bibliotheken?):
+
+```bash
+cd /home/container/whisper-bin-ubuntu-x64
+LD_LIBRARY_PATH=. ./whisper-cli --help
+```
+
+Kommt die Usage-Ausgabe, passt alles. Kommt `error while loading shared libraries:
+libwhisper.so.1`, fehlen die `.so`-Dateien neben der Binary.
 
 ## Wochenberichte
 
