@@ -1,7 +1,24 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
+import path from "node:path";
 
 const TRANSCRIBE_TIMEOUT_MS = 5 * 60 * 1000;
+
+// whisper.cpp-Release-Binaries sind dynamisch gelinkt und laden ihre
+// Bibliotheken (libwhisper.so, libggml*.so) aus dem eigenen Ordner. Damit der
+// Loader sie findet – auch wenn der Bot die Binary von woanders startet –
+// setzen wir LD_LIBRARY_PATH auf das Verzeichnis der Binary.
+export function buildWhisperSpawnEnv(env, baseEnv = process.env) {
+  const binDir = path.dirname(env.whisperBinaryPath);
+  const libDir = env.whisperLibDir ? path.resolve(env.whisperLibDir) : binDir;
+
+  const existing = baseEnv.LD_LIBRARY_PATH ? [baseEnv.LD_LIBRARY_PATH] : [];
+
+  return {
+    ...baseEnv,
+    LD_LIBRARY_PATH: [libDir, ...existing].join(path.delimiter)
+  };
+}
 
 export function isSpeechToTextConfigured(env) {
   if (!env.whisperBinaryPath || !env.whisperModelPath) {
@@ -34,7 +51,8 @@ function runWhisper(env, wavPath) {
     });
 
     const child = spawn(env.whisperBinaryPath, args, {
-      stdio: ["ignore", "pipe", "pipe"]
+      stdio: ["ignore", "pipe", "pipe"],
+      env: buildWhisperSpawnEnv(env)
     });
 
     let stdout = "";

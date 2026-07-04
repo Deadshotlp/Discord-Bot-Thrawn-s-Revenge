@@ -35,6 +35,7 @@ export const env = {
   twitchClientSecret: process.env.TWITCH_CLIENT_SECRET || "",
   whisperBinaryPath: process.env.WHISPER_BINARY_PATH || "",
   whisperModelPath: process.env.WHISPER_MODEL_PATH || "",
+  whisperLibDir: process.env.WHISPER_LIB_DIR || "",
   whisperThreads: parseInteger(process.env.WHISPER_THREADS, 2),
   whisperLanguage: process.env.WHISPER_LANGUAGE || "de",
   creatorPollIntervalSeconds: parseInteger(process.env.CREATOR_POLL_INTERVAL_SECONDS, 180),

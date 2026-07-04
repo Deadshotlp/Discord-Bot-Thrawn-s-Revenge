@@ -7,7 +7,7 @@ import {
   getPcmDurationMs,
   WHISPER_SAMPLE_RATE
 } from "../src/modules/support/services/audio.js";
-import { buildWhisperArgs } from "../src/modules/support/services/speechToText.js";
+import { buildWhisperArgs, buildWhisperSpawnEnv } from "../src/modules/support/services/speechToText.js";
 import { formatVoiceTranscript } from "../src/modules/support/services/voiceTranscript.js";
 
 test("buildWavFileBuffer writes a valid 44-byte PCM header", () => {
@@ -66,6 +66,25 @@ test("buildWhisperArgs falls back to safe defaults", () => {
   const args = buildWhisperArgs({ modelPath: "m", wavPath: "w", language: "", threads: 0 });
   assert.equal(args[args.indexOf("-l") + 1], "de");
   assert.equal(args[args.indexOf("-t") + 1], "2");
+});
+
+test("buildWhisperSpawnEnv points LD_LIBRARY_PATH at the binary directory by default", () => {
+  const result = buildWhisperSpawnEnv(
+    { whisperBinaryPath: "/home/container/whisper-bin-ubuntu-x64/whisper-cli" },
+    { PATH: "/usr/bin" }
+  );
+
+  assert.equal(result.LD_LIBRARY_PATH, "/home/container/whisper-bin-ubuntu-x64");
+  assert.equal(result.PATH, "/usr/bin");
+});
+
+test("buildWhisperSpawnEnv honors an explicit lib dir and preserves existing LD_LIBRARY_PATH", () => {
+  const result = buildWhisperSpawnEnv(
+    { whisperBinaryPath: "/opt/whisper/whisper-cli", whisperLibDir: "/opt/whisper/lib" },
+    { LD_LIBRARY_PATH: "/existing/lib" }
+  );
+
+  assert.equal(result.LD_LIBRARY_PATH, "/opt/whisper/lib:/existing/lib");
 });
 
 test("formatVoiceTranscript renders speaker lines in order", () => {
