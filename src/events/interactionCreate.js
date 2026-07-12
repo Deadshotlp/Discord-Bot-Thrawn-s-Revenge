@@ -80,7 +80,16 @@ export async function handleInteractionCreate(client, interaction) {
         error: String(error)
       });
 
-      if (!interaction.deferred && !interaction.replied) {
+      const apiCode = error?.code;
+      if (apiCode === 10062 || apiCode === 40060) {
+        return;
+      }
+
+      if (interaction.deferred && !interaction.replied) {
+        await interaction.editReply({
+          content: "Beim Ausführen des Befehls ist ein Fehler aufgetreten."
+        }).catch(() => null);
+      } else if (!interaction.deferred && !interaction.replied) {
         await interaction.reply({
           content: "Beim Ausführen des Befehls ist ein Fehler aufgetreten.",
           flags: MessageFlags.Ephemeral

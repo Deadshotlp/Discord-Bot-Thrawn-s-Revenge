@@ -25,11 +25,20 @@ export const setupPanelCommand = {
       return;
     }
 
-    await postSetupPanel(interaction.channel, client);
-
-    await interaction.reply({
-      content: "Setup-Modulverwaltung wurde gepostet.",
+    await interaction.deferReply({
       flags: MessageFlags.Ephemeral
     });
+
+    try {
+      await postSetupPanel(interaction.channel, client);
+
+      await interaction.editReply({
+        content: "Setup-Modulverwaltung wurde gepostet."
+      });
+    } catch {
+      await interaction.editReply({
+        content: "Setup-Modulverwaltung konnte nicht gepostet werden. Prüfe Bot-Rechte im Kanal."
+      });
+    }
   }
 };

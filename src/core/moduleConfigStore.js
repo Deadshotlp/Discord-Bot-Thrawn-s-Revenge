@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { dataDir, ensureDataDir } from "./dataDir.js";
 
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
@@ -21,10 +22,10 @@ function normalizeModules(modules) {
 export class ModuleConfigStore {
   constructor(modules, logger) {
     this.logger = logger;
-    this.filePath = path.join(process.cwd(), "data", "module-config.json");
+    this.filePath = path.join(dataDir, "module-config.json");
     this.moduleDefaults = normalizeModules(modules);
 
-    fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
+    ensureDataDir();
     this.state = this.loadState();
   }
 
@@ -53,7 +54,9 @@ export class ModuleConfigStore {
   }
 
   saveState() {
-    fs.writeFileSync(this.filePath, JSON.stringify(this.state, null, 2));
+    const tempPath = `${this.filePath}.${process.pid}.${Date.now()}.tmp`;
+    fs.writeFileSync(tempPath, JSON.stringify(this.state, null, 2));
+    fs.renameSync(tempPath, this.filePath);
   }
 
   ensureGuild(guildId) {
@@ -103,9 +106,24 @@ export class ModuleConfigStore {
     return this.ensureGuild(guildId);
   }
 
-  getModuleState(guildId, moduleName) {
+  ensureModuleState(guildId, moduleName) {
     const guildConfig = this.ensureGuild(guildId);
-    return guildConfig.modules[moduleName] || null;
+    if (guildConfig.modules[moduleName]) {
+      return guildConfig.modules[moduleName];
+    }
+
+    const defaults = this.moduleDefaults[moduleName];
+    if (!defaults) {
+      return null;
+    }
+
+    guildConfig.modules[moduleName] = cloneJson(defaults);
+    this.saveState();
+    return guildConfig.modules[moduleName];
+  }
+
+  getModuleState(guildId, moduleName) {
+    return this.ensureModuleState(guildId, moduleName);
   }
 
   isModuleEnabled(guildId, moduleName) {
@@ -114,29 +132,29 @@ export class ModuleConfigStore {
   }
 
   setModuleEnabled(guildId, moduleName, enabled) {
-    const guildConfig = this.ensureGuild(guildId);
-    if (!guildConfig.modules[moduleName]) {
+    const moduleState = this.ensureModuleState(guildId, moduleName);
+    if (!moduleState) {
       return null;
     }
 
-    guildConfig.modules[moduleName].enabled = Boolean(enabled);
+    moduleState.enabled = Boolean(enabled);
     this.saveState();
-    return guildConfig.modules[moduleName];
+    return moduleState;
   }
 
   setModuleConfig(guildId, moduleName, fields) {
-    const guildConfig = this.ensureGuild(guildId);
-    if (!guildConfig.modules[moduleName]) {
+    const moduleState = this.ensureModuleState(guildId, moduleName);
+    if (!moduleState) {
       return null;
     }
 
-    const currentConfig = guildConfig.modules[moduleName].config || {};
-    guildConfig.modules[moduleName].config = {
+    const currentConfig = moduleState.config || {};
+    moduleState.config = {
       ...currentConfig,
       ...fields
     };
 
     this.saveState();
-    return guildConfig.modules[moduleName];
+    return moduleState;
   }
 }

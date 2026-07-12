@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { parseSnowflakeList } from "../core/discordUtil.js";
 
 function parseBoolean(value, fallback = false) {
   if (value === undefined || value === null || value === "") {
@@ -17,16 +18,6 @@ function parseInteger(value, fallback) {
   return parsed;
 }
 
-function parseSnowflakeList(value) {
-  const text = String(value || "").trim();
-  if (!text) {
-    return [];
-  }
-
-  const matches = text.match(/\d{16,20}/g) || [];
-  return [...new Set(matches)];
-}
-
 function getRequiredEnv(name) {
   const value = process.env[name];
   if (!value) {
@@ -39,6 +30,16 @@ function getRequiredEnv(name) {
 export const env = {
   discordToken: getRequiredEnv("DISCORD_TOKEN"),
   logLevel: process.env.LOG_LEVEL || "info",
+  youtubeApiKey: process.env.YOUTUBE_API_KEY || "",
+  twitchClientId: process.env.TWITCH_CLIENT_ID || "",
+  twitchClientSecret: process.env.TWITCH_CLIENT_SECRET || "",
+  whisperBinaryPath: process.env.WHISPER_BINARY_PATH || "",
+  whisperModelPath: process.env.WHISPER_MODEL_PATH || "",
+  whisperLibDir: process.env.WHISPER_LIB_DIR || "",
+  whisperThreads: parseInteger(process.env.WHISPER_THREADS, 2),
+  whisperLanguage: process.env.WHISPER_LANGUAGE || "de",
+  creatorPollIntervalSeconds: parseInteger(process.env.CREATOR_POLL_INTERVAL_SECONDS, 180),
+  serverStatusPollIntervalSeconds: parseInteger(process.env.SERVER_STATUS_POLL_INTERVAL_SECONDS, 300),
   setupChannelName: process.env.SETUP_CHANNEL_NAME || "bot-setup",
   verifyDefaultRoleName: process.env.VERIFY_DEFAULT_ROLE_NAME || "Verifiziert",
   verifyDefaultChannelName: process.env.VERIFY_DEFAULT_CHANNEL_NAME || "verify",

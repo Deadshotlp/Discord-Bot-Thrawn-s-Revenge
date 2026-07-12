@@ -15,14 +15,17 @@ export const SUPPORT_DEPT_UI_SELECT_ID = "support_dept_ui_select";
 
 export const SUPPORT_DEPT_UI_SET_DEFAULT_PREFIX = "support_dept_ui_set_default:";
 export const SUPPORT_DEPT_UI_SET_ROLES_PREFIX = "support_dept_ui_set_roles:";
+export const SUPPORT_DEPT_UI_SET_LEADS_PREFIX = "support_dept_ui_set_leads:";
 export const SUPPORT_DEPT_UI_REMOVE_PREFIX = "support_dept_ui_remove:";
 
 export const SUPPORT_DEPT_UI_ADD_MODAL_ID = "support_dept_ui_add_modal";
 export const SUPPORT_DEPT_UI_ROLES_MODAL_PREFIX = "support_dept_ui_roles_modal:";
+export const SUPPORT_DEPT_UI_LEADS_MODAL_PREFIX = "support_dept_ui_leads_modal:";
 
 export const SUPPORT_DEPT_UI_ADD_NAME_INPUT_ID = "support_dept_ui_add_name";
 export const SUPPORT_DEPT_UI_ADD_ROLES_INPUT_ID = "support_dept_ui_add_roles";
 export const SUPPORT_DEPT_UI_ROLES_INPUT_ID = "support_dept_ui_roles";
+export const SUPPORT_DEPT_UI_LEADS_INPUT_ID = "support_dept_ui_leads";
 
 function formatRoles(roleIds) {
   if (!Array.isArray(roleIds) || roleIds.length === 0) {
@@ -41,7 +44,11 @@ function buildDepartmentsList(departments, defaultDepartmentId) {
   return safeDepartments
     .map((department) => {
       const marker = department.id === defaultDepartmentId ? "[Default] " : "";
-      return `${marker}${department.name} (${department.id})\nRollen: ${formatRoles(department.roleIds)}`;
+      return [
+        `${marker}${department.name} (${department.id})`,
+        `Rollen: ${formatRoles(department.roleIds)}`,
+        `Leiter: ${formatRoles(department.leadRoleIds)}`
+      ].join("\n");
     })
     .join("\n\n");
 }
@@ -103,7 +110,8 @@ export function buildSupportDepartmentActionsPayload(department, isDefault, canR
     .addFields(
       { name: "ID", value: department.id, inline: true },
       { name: "Default", value: isDefault ? "Ja" : "Nein", inline: true },
-      { name: "Rollen", value: formatRoles(department.roleIds), inline: false }
+      { name: "Rollen", value: formatRoles(department.roleIds), inline: false },
+      { name: "Leiter", value: formatRoles(department.leadRoleIds), inline: false }
     );
 
   const row = new ActionRowBuilder().addComponents(
@@ -115,6 +123,10 @@ export function buildSupportDepartmentActionsPayload(department, isDefault, canR
     new ButtonBuilder()
       .setCustomId(`${SUPPORT_DEPT_UI_SET_ROLES_PREFIX}${department.id}`)
       .setLabel("Rollen setzen")
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`${SUPPORT_DEPT_UI_SET_LEADS_PREFIX}${department.id}`)
+      .setLabel("Leiter setzen")
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`${SUPPORT_DEPT_UI_REMOVE_PREFIX}${department.id}`)
@@ -176,5 +188,26 @@ export function buildSupportDepartmentRolesModal(department) {
   }
 
   modal.addComponents(new ActionRowBuilder().addComponents(rolesInput));
+  return modal;
+}
+
+export function buildSupportDepartmentLeadsModal(department) {
+  const modal = new ModalBuilder()
+    .setCustomId(`${SUPPORT_DEPT_UI_LEADS_MODAL_PREFIX}${department.id}`)
+    .setTitle(`Leiter: ${department.name}`.slice(0, 45));
+
+  const leadsInput = new TextInputBuilder()
+    .setCustomId(SUPPORT_DEPT_UI_LEADS_INPUT_ID)
+    .setLabel("Leiter-Rollen (IDs oder Erwähnungen)")
+    .setStyle(TextInputStyle.Paragraph)
+    .setRequired(false)
+    .setMaxLength(400)
+    .setPlaceholder("Leer lassen = keine Leiter-Rollen");
+
+  if (Array.isArray(department.leadRoleIds) && department.leadRoleIds.length > 0) {
+    leadsInput.setValue(department.leadRoleIds.join(", ").slice(0, 400));
+  }
+
+  modal.addComponents(new ActionRowBuilder().addComponents(leadsInput));
   return modal;
 }

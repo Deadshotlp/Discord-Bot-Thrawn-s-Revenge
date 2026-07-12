@@ -1,11 +1,8 @@
-import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
+import { ensureDataDir } from "../../../core/dataDir.js";
 
-const dataDir = path.join(process.cwd(), "data");
-const dbFilePath = path.join(dataDir, "support-tickets.db");
-
-fs.mkdirSync(dataDir, { recursive: true });
+const dbFilePath = path.join(ensureDataDir(), "support-tickets.db");
 
 const db = new Database(dbFilePath);
 
@@ -58,6 +55,13 @@ const selectOpenTicketByUserStmt = db.prepare(`
   WHERE guild_id = ? AND user_id = ? AND status = 'open'
   ORDER BY created_at DESC
   LIMIT 1
+`);
+
+const selectClosedTicketsByGuildStmt = db.prepare(`
+  SELECT *
+  FROM support_tickets
+  WHERE guild_id = ? AND status = 'closed'
+  ORDER BY closed_at DESC
 `);
 
 const insertTicketStmt = db.prepare(`
@@ -183,6 +187,13 @@ export function getOpenTicketByUser(guildId, userId) {
   return toTicketData(selectOpenTicketByUserStmt.get(guildId, userId));
 }
 
+export function listClosedSupportTickets(guildId) {
+  return selectClosedTicketsByGuildStmt
+    .all(guildId)
+    .map((row) => toTicketData(row))
+    .filter(Boolean);
+}
+
 const closeTicketTransaction = db.transaction((guildId, ticketId, closedById) => {
   const existing = selectTicketByIdStmt.get(guildId, ticketId);
   if (!existing || existing.status !== "open") {
@@ -223,4 +234,10 @@ const escalateTicketTransaction = db.transaction((guildId, ticketId, departmentI
 
 export function escalateSupportTicket(guildId, ticketId, departmentId) {
   return toTicketData(escalateTicketTransaction(guildId, ticketId, departmentId));
+}
+
+export function closeSupportTicketsDb() {
+  if (db.open) {
+    db.close();
+  }
 }
