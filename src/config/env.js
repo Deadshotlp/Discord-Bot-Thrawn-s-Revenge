@@ -51,6 +51,8 @@ export const env = {
   supportDefaultDepartmentName: process.env.SUPPORT_DEFAULT_DEPARTMENT_NAME || "Support",
   supportDefaultDepartmentRoleIdsRaw: process.env.SUPPORT_DEFAULT_DEPARTMENT_ROLE_IDS || "",
   supportDefaultDepartmentRoleIds: parseSnowflakeList(process.env.SUPPORT_DEFAULT_DEPARTMENT_ROLE_IDS || ""),
+  githubToken: process.env.GITHUB_TOKEN || "",
+  updatesPollIntervalMinutes: parseInteger(process.env.UPDATES_POLL_INTERVAL_MINUTES, 15),
   autoSetupChannelOnGuildJoin: parseBoolean(
     process.env.AUTO_SETUP_CHANNEL_ON_GUILD_JOIN ?? process.env.FORCE_SETUP_ON_GUILD_JOIN,
     true

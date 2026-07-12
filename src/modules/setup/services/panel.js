@@ -49,8 +49,14 @@ function buildStatusText(moduleName, moduleState) {
     ].join("\n");
   }
 
-  if (moduleName !== "verify") {
-    return activeText;
+  if (moduleName === "updates") {
+    const config = moduleState?.config || {};
+    const repos = Array.isArray(config.repos) ? config.repos : [];
+    return [
+      activeText,
+      `Channel: ${toChannelMention(config.channelId)}`,
+      `Repos: ${repos.length}`
+    ].join("\n");
   }
 
   return activeText;
@@ -111,6 +117,16 @@ export function buildSetupPanelPayload(client, guildId) {
         .setLabel("Support konfigurieren")
         .setStyle(ButtonStyle.Primary)
         .setDisabled(!moduleConfigStore.isModuleEnabled(guildId, "support"))
+    );
+  }
+
+  if (managedModules.some((moduleDef) => moduleDef.name === "updates")) {
+    configRow.addComponents(
+      new ButtonBuilder()
+        .setCustomId(`${SETUP_CONFIG_PREFIX}updates`)
+        .setLabel("Updates konfigurieren")
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(!moduleConfigStore.isModuleEnabled(guildId, "updates"))
     );
   }
 

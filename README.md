@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Thrawn's Revenge Discord Bot
 
 Der Bot wurde vollständig zurückgesetzt und als modulare Basisstruktur neu aufgebaut.
@@ -52,6 +51,16 @@ src/
       services/
         ensureSetupChannel.js
         panel.js
+    updates/
+      index.js
+      commands/
+        updatesChannel.js
+        updatesRepo.js
+        changelog.js
+      services/
+        github.js
+        embeds.js
+        poll.js
   index.js
 ```
 
@@ -80,12 +89,15 @@ npm run start
 - `/support-department`
 - `/support-department-ui`
 - `/support-ticket-panel`
+- `/updates-channel`
+- `/updates-repo`
+- `/changelog`
 
 ## Modulverwaltung
 
 - Mit `/setup-panel` öffnest du die zentrale Modulverwaltung.
 - Module können pro Server individuell ein- oder ausgeschaltet werden.
-- Für aktive Module gibt es Konfigurationsoptionen (Verify und Support).
+- Für aktive Module gibt es Konfigurationsoptionen (Verify, Support und Updates).
 - Basiswerte sind hinterlegt; fehlende Rollen/Channel werden automatisch erstellt.
 
 ## Verhalten beim Guild-Join
@@ -126,6 +138,16 @@ Wenn `AUTO_SETUP_CHANNEL_ON_GUILD_JOIN=true` gesetzt ist:
 - Transkript (erstellt eine Falldatei im Verwaltungschannel)
 - Departments können mit `/support-department` (Slash-Command) oder `/support-department-ui` (Interface) verwaltet werden.
 
+## Updates
+
+- Mit `/updates-channel` legst du fest, in welchem Kanal automatische Repo-Updates und Changelogs gepostet werden.
+- Mit `/updates-repo add owner/repo` beobachtet der Bot ein GitHub-Repo. Beim Hinzufügen wird der aktuelle Stand als Basislinie gespeichert, es wird also nichts Rückwirkendes gepostet.
+- Der Bot prüft beobachtete Repos alle `UPDATES_POLL_INTERVAL_MINUTES` Minuten (Standard: 15) auf neue GitHub-Releases. Hat ein Repo keine Releases, wird stattdessen der neueste Commit auf dem Standard-Branch verwendet.
+- Neue Updates werden automatisch als Embed im konfigurierten Kanal gepostet.
+- Mit `/updates-repo remove` bzw. `/updates-repo list` verwaltest du die beobachtete Liste.
+- Mit `/changelog` öffnet sich ein Formular (Titel, optionale Version, Änderungstext), das nach dem Absenden als Embed im konfigurierten Updates-Kanal gepostet wird — für manuelle Ankündigungen ohne GitHub-Release.
+- Optional: `GITHUB_TOKEN` in der `.env` erhöht das GitHub-API-Rate-Limit (60 → 5000 Anfragen/Stunde), ist aber für öffentliche Repos nicht zwingend erforderlich.
+
 ## Module erweitern
 
 1. Neues Modul unter `src/modules/<modulname>` anlegen.
@@ -133,5 +155,3 @@ Wenn `AUTO_SETUP_CHANNEL_ON_GUILD_JOIN=true` gesetzt ist:
 3. Modul in `src/modules/index.js` registrieren.
 
 So bleibt die Struktur klar getrennt und skalierbar.
-=======
->>>>>>> f33003bf58fd7f9b749ff33ba3e79d08fc093b43

@@ -166,6 +166,28 @@ function buildSupportConfigModal(supportState, env) {
   return modal;
 }
 
+function buildUpdatesConfigModal(updatesState) {
+  const config = updatesState?.config || {};
+  const modal = new ModalBuilder()
+    .setCustomId(`${SETUP_CONFIG_MODAL_PREFIX}updates`)
+    .setTitle("Updates-Modul konfigurieren");
+
+  const channelInput = new TextInputBuilder()
+    .setCustomId("updates_channel_id")
+    .setLabel("Updates-Channel (ID oder Erwähnung)")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(false)
+    .setPlaceholder("Leer lassen = kein automatisches Posten");
+
+  if (config.channelId) {
+    channelInput.setValue(config.channelId);
+  }
+
+  modal.addComponents(new ActionRowBuilder().addComponents(channelInput));
+
+  return modal;
+}
+
 async function handleSetupInteraction({ client, interaction }) {
   if (!interaction.inGuild()) {
     return;
@@ -232,6 +254,12 @@ async function handleSetupInteraction({ client, interaction }) {
     if (moduleName === "support") {
       const supportState = moduleConfigStore.getModuleState(interaction.guildId, "support");
       await interaction.showModal(buildSupportConfigModal(supportState, client.botContext.env));
+      return;
+    }
+
+    if (moduleName === "updates") {
+      const updatesState = moduleConfigStore.getModuleState(interaction.guildId, "updates");
+      await interaction.showModal(buildUpdatesConfigModal(updatesState));
       return;
     }
 
@@ -338,6 +366,25 @@ async function handleSetupInteraction({ client, interaction }) {
           talkCategoryId ? `Talk-Kategorie: ${talkCategoryId}` : "Talk-Kategorie: automatisch",
           `Default Department: ${defaultDepartment?.name || defaultDepartmentName || client.botContext.env.supportDefaultDepartmentName}`,
           defaultDepartmentRoleIds.length > 0 ? "Department-Rollen: gesetzt" : "Department-Rollen: keine"
+        ].join("\n"),
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
+    if (moduleName === "updates") {
+      const channelId = extractSnowflake(interaction.fields.getTextInputValue("updates_channel_id"));
+      const updatesState = moduleConfigStore.getModuleState(interaction.guildId, "updates");
+
+      moduleConfigStore.setModuleConfig(interaction.guildId, "updates", {
+        ...(updatesState?.config || {}),
+        channelId
+      });
+
+      await interaction.reply({
+        content: [
+          "Updates-Konfiguration gespeichert.",
+          channelId ? `Channel: <#${channelId}>` : "Channel: nicht gesetzt (kein automatisches Posten)"
         ].join("\n"),
         flags: MessageFlags.Ephemeral
       });
