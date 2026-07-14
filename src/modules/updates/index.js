@@ -2,8 +2,21 @@ import { MessageFlags } from "discord.js";
 import { updatesChannelCommand } from "./commands/updatesChannel.js";
 import { updatesRepoCommand } from "./commands/updatesRepo.js";
 import { changelogCommand, CHANGELOG_MODAL_ID, CHANGELOG_NOTES_MAX_LENGTH } from "./commands/changelog.js";
-import { buildChangelogEmbed } from "./services/embeds.js";
+import { buildChangelogEmbeds, formatChangelogDate } from "./services/embeds.js";
 import { startUpdatesPolling } from "./services/poll.js";
+
+function nextChangelogSequence(moduleConfigStore, guildId, state, date) {
+  const dateKey = formatChangelogDate(date);
+  const previous = state?.config?.changelogSequence;
+  const sequence = previous?.dateKey === dateKey ? previous.count + 1 : 1;
+
+  moduleConfigStore.setModuleConfig(guildId, "updates", {
+    ...(state?.config || {}),
+    changelogSequence: { dateKey, count: sequence }
+  });
+
+  return sequence;
+}
 
 async function handleChangelogModalSubmit({ client, interaction }) {
   if (!interaction.isModalSubmit() || interaction.customId !== CHANGELOG_MODAL_ID) {
@@ -37,12 +50,14 @@ async function handleChangelogModalSubmit({ client, interaction }) {
     return;
   }
 
-  const title = interaction.fields.getTextInputValue("changelog_title").trim();
-  const version = interaction.fields.getTextInputValue("changelog_version")?.trim() || "";
+  const category = interaction.fields.getTextInputValue("changelog_category").trim();
   const notes = interaction.fields.getTextInputValue("changelog_notes").trim().slice(0, CHANGELOG_NOTES_MAX_LENGTH);
 
-  const embed = buildChangelogEmbed({ title, version, notes, author: interaction.user.tag });
-  await channel.send({ embeds: [embed] });
+  const date = new Date();
+  const sequence = nextChangelogSequence(moduleConfigStore, interaction.guildId, state, date);
+
+  const embeds = buildChangelogEmbeds({ category, notes, sequence, date });
+  await channel.send({ embeds });
 
   await interaction.reply({
     content: `Changelog wurde in <#${channelId}> gepostet.`,

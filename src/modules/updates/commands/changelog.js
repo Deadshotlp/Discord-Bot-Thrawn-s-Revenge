@@ -9,9 +9,8 @@ import {
 import { canManageServer } from "../../../core/permissions.js";
 
 export const CHANGELOG_MODAL_ID = "updates_changelog_modal";
-export const CHANGELOG_TITLE_MAX_LENGTH = 200;
-export const CHANGELOG_VERSION_MAX_LENGTH = 50;
-export const CHANGELOG_NOTES_MAX_LENGTH = 4000;
+export const CHANGELOG_CATEGORY_MAX_LENGTH = 100;
+export const CHANGELOG_NOTES_MAX_LENGTH = 3800;
 
 export const changelogCommand = {
   data: new SlashCommandBuilder()
@@ -40,30 +39,25 @@ export const changelogCommand = {
 
     const modal = new ModalBuilder().setCustomId(CHANGELOG_MODAL_ID).setTitle("Changelog veröffentlichen");
 
-    const titleInput = new TextInputBuilder()
-      .setCustomId("changelog_title")
-      .setLabel("Titel")
+    const categoryInput = new TextInputBuilder()
+      .setCustomId("changelog_category")
+      .setLabel("Kategorie")
       .setStyle(TextInputStyle.Short)
       .setRequired(true)
-      .setMaxLength(CHANGELOG_TITLE_MAX_LENGTH);
-
-    const versionInput = new TextInputBuilder()
-      .setCustomId("changelog_version")
-      .setLabel("Version (optional)")
-      .setStyle(TextInputStyle.Short)
-      .setRequired(false)
-      .setMaxLength(CHANGELOG_VERSION_MAX_LENGTH);
+      .setMaxLength(CHANGELOG_CATEGORY_MAX_LENGTH)
+      .setValue("Allgemeine Änderungen")
+      .setPlaceholder("z. B. Allgemeine Änderungen");
 
     const notesInput = new TextInputBuilder()
       .setCustomId("changelog_notes")
-      .setLabel("Änderungen")
+      .setLabel("Änderungen (je Zeile mit + oder -)")
       .setStyle(TextInputStyle.Paragraph)
       .setRequired(true)
-      .setMaxLength(CHANGELOG_NOTES_MAX_LENGTH);
+      .setMaxLength(CHANGELOG_NOTES_MAX_LENGTH)
+      .setPlaceholder("+Neue Funktion hinzugefügt\n-(SX-21) Schaden: 6*40 --> 6*25");
 
     modal.addComponents(
-      new ActionRowBuilder().addComponents(titleInput),
-      new ActionRowBuilder().addComponents(versionInput),
+      new ActionRowBuilder().addComponents(categoryInput),
       new ActionRowBuilder().addComponents(notesInput)
     );
 

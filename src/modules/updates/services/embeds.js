@@ -28,16 +28,42 @@ export function buildRepoUpdateEmbed(repoEntry, update) {
   return embed;
 }
 
-export function buildChangelogEmbed({ title, version, notes, author }) {
-  const embed = new EmbedBuilder()
-    .setColor(0x5865f2)
-    .setTitle(version ? `${title} (${version})` : title)
-    .setDescription(notes.slice(0, DESCRIPTION_MAX_LENGTH))
-    .setTimestamp(new Date());
+const ROMAN_NUMERALS = [
+  [1000, "M"], [900, "CM"], [500, "D"], [400, "CD"],
+  [100, "C"], [90, "XC"], [50, "L"], [40, "XL"],
+  [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]
+];
 
-  if (author) {
-    embed.setFooter({ text: `Changelog von ${author}` });
+export function toRomanNumeral(value) {
+  let remaining = value;
+  let result = "";
+
+  for (const [amount, symbol] of ROMAN_NUMERALS) {
+    while (remaining >= amount) {
+      result += symbol;
+      remaining -= amount;
+    }
   }
 
-  return embed;
+  return result || String(value);
+}
+
+export function formatChangelogDate(date) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${day}.${month}.${date.getFullYear()}`;
+}
+
+export function buildChangelogEmbeds({ category, notes, sequence, date }) {
+  const heading = new EmbedBuilder()
+    .setColor(0x2b2d31)
+    .setDescription(`Changelog vom ${formatChangelogDate(date)} Nr. ${toRomanNumeral(sequence)}`);
+
+  const body = `${category}:\n${notes}`.slice(0, DESCRIPTION_MAX_LENGTH - 10);
+
+  const changes = new EmbedBuilder()
+    .setColor(0x2b2d31)
+    .setDescription(`\`\`\`diff\n${body}\n\`\`\``);
+
+  return [heading, changes];
 }
