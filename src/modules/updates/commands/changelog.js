@@ -6,11 +6,15 @@ import {
   TextInputBuilder,
   TextInputStyle
 } from "discord.js";
-import { canManageServer } from "../../../core/permissions.js";
+import { canManageServer, hasAnyRole } from "../../../core/permissions.js";
 
 export const CHANGELOG_MODAL_ID = "updates_changelog_modal";
 export const CHANGELOG_CATEGORY_MAX_LENGTH = 100;
 export const CHANGELOG_NOTES_MAX_LENGTH = 3800;
+
+export function canPostChangelog(member, config) {
+  return canManageServer(member) || hasAnyRole(member, config?.changelogRoleIds);
+}
 
 export const changelogCommand = {
   data: new SlashCommandBuilder()
@@ -18,16 +22,16 @@ export const changelogCommand = {
     .setDescription("Postet manuell einen Changelog-Eintrag im konfigurierten Updates-Kanal."),
 
   async execute({ client, interaction }) {
-    if (!canManageServer(interaction.member)) {
+    const { moduleConfigStore } = client.botContext;
+    const state = moduleConfigStore.getModuleState(interaction.guildId, "updates");
+
+    if (!canPostChangelog(interaction.member, state?.config)) {
       await interaction.reply({
-        content: "Diesen Befehl dürfen nur Admins oder Mitglieder mit Server-verwalten nutzen.",
+        content: "Diesen Befehl dürfen nur Admins, Mitglieder mit Server-verwalten oder berechtigte Rollen nutzen.",
         flags: MessageFlags.Ephemeral
       });
       return;
     }
-
-    const { moduleConfigStore } = client.botContext;
-    const state = moduleConfigStore.getModuleState(interaction.guildId, "updates");
 
     if (!state?.config?.channelId) {
       await interaction.reply({
@@ -45,16 +49,15 @@ export const changelogCommand = {
       .setStyle(TextInputStyle.Short)
       .setRequired(true)
       .setMaxLength(CHANGELOG_CATEGORY_MAX_LENGTH)
-      .setValue("Allgemeine Änderungen")
-      .setPlaceholder("z. B. Allgemeine Änderungen");
+      .setPlaceholder("z. B. Discord, Gameserver, Allgemein");
 
     const notesInput = new TextInputBuilder()
       .setCustomId("changelog_notes")
-      .setLabel("Änderungen (je Zeile mit + oder -)")
+      .setLabel("Änderungen (+ Hinzugefügt, ~ Geändert, - Gelöscht)")
       .setStyle(TextInputStyle.Paragraph)
       .setRequired(true)
       .setMaxLength(CHANGELOG_NOTES_MAX_LENGTH)
-      .setPlaceholder("+Neue Funktion hinzugefügt\n-(SX-21) Schaden: 6*40 --> 6*25");
+      .setPlaceholder("+Neue Funktion hinzugefügt\n~(SX-21) Schaden: 6*40 --> 6*25\n-Altes Feature entfernt");
 
     modal.addComponents(
       new ActionRowBuilder().addComponents(categoryInput),

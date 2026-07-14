@@ -191,7 +191,22 @@ function buildUpdatesConfigModal(updatesState) {
     channelInput.setValue(config.channelId);
   }
 
-  modal.addComponents(new ActionRowBuilder().addComponents(channelInput));
+  const changelogRolesInput = new TextInputBuilder()
+    .setCustomId("updates_changelog_role_ids")
+    .setLabel("Changelog-Rollen (IDs/Erwähnungen)")
+    .setStyle(TextInputStyle.Paragraph)
+    .setRequired(false)
+    .setPlaceholder("Leer lassen = nur Admins/Server verwalten")
+    .setMaxLength(400);
+
+  if (Array.isArray(config.changelogRoleIds) && config.changelogRoleIds.length > 0) {
+    changelogRolesInput.setValue(config.changelogRoleIds.join(", ").slice(0, 400));
+  }
+
+  modal.addComponents(
+    new ActionRowBuilder().addComponents(channelInput),
+    new ActionRowBuilder().addComponents(changelogRolesInput)
+  );
 
   return modal;
 }
@@ -411,17 +426,24 @@ async function handleSetupInteraction({ client, interaction }) {
 
     if (moduleName === "updates") {
       const channelId = extractSnowflake(interaction.fields.getTextInputValue("updates_channel_id"));
+      const changelogRoleIds = extractRoleIds(
+        interaction.fields.getTextInputValue("updates_changelog_role_ids") || ""
+      );
       const updatesState = moduleConfigStore.getModuleState(interaction.guildId, "updates");
 
       moduleConfigStore.setModuleConfig(interaction.guildId, "updates", {
         ...(updatesState?.config || {}),
-        channelId
+        channelId,
+        changelogRoleIds
       });
 
       await interaction.reply({
         content: [
           "Updates-Konfiguration gespeichert.",
-          channelId ? `Channel: <#${channelId}>` : "Channel: nicht gesetzt (kein automatisches Posten)"
+          channelId ? `Channel: <#${channelId}>` : "Channel: nicht gesetzt (kein automatisches Posten)",
+          changelogRoleIds.length > 0
+            ? `Changelog-Rollen: ${changelogRoleIds.map((roleId) => `<@&${roleId}>`).join(" ")}`
+            : "Changelog-Rollen: nur Admins/Server verwalten"
         ].join("\n"),
         flags: MessageFlags.Ephemeral
       });

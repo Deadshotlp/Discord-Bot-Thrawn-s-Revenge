@@ -57,10 +57,12 @@ function buildStatusText(moduleName, moduleState) {
   if (moduleName === "updates") {
     const config = moduleState?.config || {};
     const repos = Array.isArray(config.repos) ? config.repos : [];
+    const changelogRoleIds = Array.isArray(config.changelogRoleIds) ? config.changelogRoleIds : [];
     return [
       activeText,
       `Channel: ${toChannelMention(config.channelId)}`,
-      `Repos: ${repos.length}`
+      `Repos: ${repos.length}`,
+      `Changelog-Rollen: ${changelogRoleIds.length}`
     ].join("\n");
   }
 

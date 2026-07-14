@@ -54,16 +54,51 @@ export function formatChangelogDate(date) {
   return `${day}.${month}.${date.getFullYear()}`;
 }
 
-export function buildChangelogEmbeds({ category, notes, sequence, date }) {
-  const heading = new EmbedBuilder()
+const ANSI_RESET = "[0m";
+const ANSI_GREEN = "[0;32m";
+const ANSI_YELLOW = "[0;33m";
+const ANSI_RED = "[0;31m";
+
+function colorizeChangelogLine(line) {
+  if (line.startsWith("+")) {
+    return `${ANSI_GREEN}${line}${ANSI_RESET}`;
+  }
+
+  if (line.startsWith("~")) {
+    return `${ANSI_YELLOW}${line}${ANSI_RESET}`;
+  }
+
+  if (line.startsWith("-")) {
+    return `${ANSI_RED}${line}${ANSI_RESET}`;
+  }
+
+  return line;
+}
+
+export function colorizeChangelogNotes(notes) {
+  return notes
+    .split("\n")
+    .map((line) => colorizeChangelogLine(line))
+    .join("\n");
+}
+
+export function buildChangelogEmbed({ category, notes, sequence, date, author, authorAvatarUrl }) {
+  const coloredNotes = colorizeChangelogNotes(notes);
+  const description = [
+    `${formatChangelogDate(date)} — Nr. ${toRomanNumeral(sequence)}`,
+    "",
+    `\`\`\`ansi\n${coloredNotes}\n\`\`\``
+  ].join("\n").slice(0, DESCRIPTION_MAX_LENGTH);
+
+  const embed = new EmbedBuilder()
     .setColor(0x2b2d31)
-    .setDescription(`Changelog vom ${formatChangelogDate(date)} Nr. ${toRomanNumeral(sequence)}`);
+    .setTitle(category)
+    .setDescription(description)
+    .setTimestamp(date);
 
-  const body = `${category}:\n${notes}`.slice(0, DESCRIPTION_MAX_LENGTH - 10);
+  if (author) {
+    embed.setFooter({ text: `Erstellt von ${author}`, iconURL: authorAvatarUrl || undefined });
+  }
 
-  const changes = new EmbedBuilder()
-    .setColor(0x2b2d31)
-    .setDescription(`\`\`\`diff\n${body}\n\`\`\``);
-
-  return [heading, changes];
+  return embed;
 }
