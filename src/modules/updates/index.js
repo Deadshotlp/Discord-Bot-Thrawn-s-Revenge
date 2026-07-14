@@ -78,7 +78,8 @@ async function handleChangelogModalSubmit({ client, interaction }) {
     sequence,
     date,
     author: interaction.member?.displayName || interaction.user.username,
-    authorAvatarUrl: interaction.user.displayAvatarURL()
+    authorAvatarUrl: interaction.user.displayAvatarURL(),
+    noteText: state?.config?.changelogNoteText || ""
   });
 
   const pingRoleId = state?.config?.changelogPingRoleId;
@@ -110,7 +111,8 @@ export const updatesModule = {
     channelId: "",
     repos: [],
     changelogRoleIds: [],
-    changelogPingRoleId: ""
+    changelogPingRoleId: "",
+    changelogNoteText: ""
   },
   commands: [updatesChannelCommand, updatesRepoCommand, changelogCommand],
   events: {

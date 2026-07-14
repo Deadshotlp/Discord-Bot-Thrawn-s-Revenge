@@ -214,10 +214,23 @@ function buildUpdatesConfigModal(updatesState) {
     pingRoleInput.setValue(config.changelogPingRoleId);
   }
 
+  const noteTextInput = new TextInputBuilder()
+    .setCustomId("updates_changelog_note_text")
+    .setLabel("Zusatztext unter Changelog (optional)")
+    .setStyle(TextInputStyle.Paragraph)
+    .setRequired(false)
+    .setPlaceholder("Leer lassen = kein Zusatztext")
+    .setMaxLength(500);
+
+  if (config.changelogNoteText) {
+    noteTextInput.setValue(String(config.changelogNoteText).slice(0, 500));
+  }
+
   modal.addComponents(
     new ActionRowBuilder().addComponents(channelInput),
     new ActionRowBuilder().addComponents(changelogRolesInput),
-    new ActionRowBuilder().addComponents(pingRoleInput)
+    new ActionRowBuilder().addComponents(pingRoleInput),
+    new ActionRowBuilder().addComponents(noteTextInput)
   );
 
   return modal;
@@ -444,13 +457,18 @@ async function handleSetupInteraction({ client, interaction }) {
       const changelogPingRoleId = extractSnowflake(
         interaction.fields.getTextInputValue("updates_changelog_ping_role_id")
       );
+      const changelogNoteText = interaction.fields
+        .getTextInputValue("updates_changelog_note_text")
+        ?.trim()
+        ?.slice(0, 500);
       const updatesState = moduleConfigStore.getModuleState(interaction.guildId, "updates");
 
       moduleConfigStore.setModuleConfig(interaction.guildId, "updates", {
         ...(updatesState?.config || {}),
         channelId,
         changelogRoleIds,
-        changelogPingRoleId
+        changelogPingRoleId,
+        changelogNoteText
       });
 
       await interaction.reply({
@@ -460,7 +478,8 @@ async function handleSetupInteraction({ client, interaction }) {
           changelogRoleIds.length > 0
             ? `Changelog-Rollen: ${changelogRoleIds.map((roleId) => `<@&${roleId}>`).join(" ")}`
             : "Changelog-Rollen: nur Admins/Server verwalten",
-          changelogPingRoleId ? `Ping-Rolle: <@&${changelogPingRoleId}>` : "Ping-Rolle: kein Ping"
+          changelogPingRoleId ? `Ping-Rolle: <@&${changelogPingRoleId}>` : "Ping-Rolle: kein Ping",
+          changelogNoteText ? "Zusatztext: gesetzt" : "Zusatztext: keiner"
         ].join("\n"),
         flags: MessageFlags.Ephemeral
       });

@@ -82,13 +82,19 @@ export function colorizeChangelogNotes(notes) {
     .join("\n");
 }
 
-export function buildChangelogEmbed({ category, notes, sequence, date, author, authorAvatarUrl }) {
+export function buildChangelogEmbed({ category, notes, sequence, date, author, authorAvatarUrl, noteText }) {
   const coloredNotes = colorizeChangelogNotes(notes);
-  const description = [
+  const descriptionParts = [
     `${formatChangelogDate(date)} — Nr. ${toRomanNumeral(sequence)}`,
     "",
     `\`\`\`ansi\n${coloredNotes}\n\`\`\``
-  ].join("\n").slice(0, DESCRIPTION_MAX_LENGTH);
+  ];
+
+  if (noteText) {
+    descriptionParts.push("", noteText);
+  }
+
+  const description = descriptionParts.join("\n").slice(0, DESCRIPTION_MAX_LENGTH);
 
   const embed = new EmbedBuilder()
     .setColor(0x2b2d31)
