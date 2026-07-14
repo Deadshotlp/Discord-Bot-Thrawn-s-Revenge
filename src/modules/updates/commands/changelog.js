@@ -53,7 +53,7 @@ export const changelogCommand = {
 
     const notesInput = new TextInputBuilder()
       .setCustomId("changelog_notes")
-      .setLabel("Änderungen (+ Hinzugefügt, ~ Geändert, - Gelöscht)")
+      .setLabel("Änderungen (+/~/-)")
       .setStyle(TextInputStyle.Paragraph)
       .setRequired(true)
       .setMaxLength(CHANGELOG_NOTES_MAX_LENGTH)
