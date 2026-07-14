@@ -80,7 +80,13 @@ async function handleChangelogModalSubmit({ client, interaction }) {
     author: interaction.member?.displayName || interaction.user.username,
     authorAvatarUrl: interaction.user.displayAvatarURL()
   });
-  await channel.send({ embeds: [embed] });
+
+  const pingRoleId = state?.config?.changelogPingRoleId;
+  await channel.send({
+    content: pingRoleId ? `<@&${pingRoleId}>` : undefined,
+    embeds: [embed],
+    allowedMentions: pingRoleId ? { roles: [pingRoleId] } : { parse: [] }
+  });
 
   await interaction.reply({
     content: `Changelog wurde in <#${channelId}> gepostet.`,
@@ -103,7 +109,8 @@ export const updatesModule = {
   defaultConfig: {
     channelId: "",
     repos: [],
-    changelogRoleIds: []
+    changelogRoleIds: [],
+    changelogPingRoleId: ""
   },
   commands: [updatesChannelCommand, updatesRepoCommand, changelogCommand],
   events: {

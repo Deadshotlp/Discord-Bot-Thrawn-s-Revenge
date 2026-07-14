@@ -203,9 +203,21 @@ function buildUpdatesConfigModal(updatesState) {
     changelogRolesInput.setValue(config.changelogRoleIds.join(", ").slice(0, 400));
   }
 
+  const pingRoleInput = new TextInputBuilder()
+    .setCustomId("updates_changelog_ping_role_id")
+    .setLabel("Ping-Rolle bei Changelog (optional)")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(false)
+    .setPlaceholder("Leer lassen = kein Ping");
+
+  if (config.changelogPingRoleId) {
+    pingRoleInput.setValue(config.changelogPingRoleId);
+  }
+
   modal.addComponents(
     new ActionRowBuilder().addComponents(channelInput),
-    new ActionRowBuilder().addComponents(changelogRolesInput)
+    new ActionRowBuilder().addComponents(changelogRolesInput),
+    new ActionRowBuilder().addComponents(pingRoleInput)
   );
 
   return modal;
@@ -429,12 +441,16 @@ async function handleSetupInteraction({ client, interaction }) {
       const changelogRoleIds = extractRoleIds(
         interaction.fields.getTextInputValue("updates_changelog_role_ids") || ""
       );
+      const changelogPingRoleId = extractSnowflake(
+        interaction.fields.getTextInputValue("updates_changelog_ping_role_id")
+      );
       const updatesState = moduleConfigStore.getModuleState(interaction.guildId, "updates");
 
       moduleConfigStore.setModuleConfig(interaction.guildId, "updates", {
         ...(updatesState?.config || {}),
         channelId,
-        changelogRoleIds
+        changelogRoleIds,
+        changelogPingRoleId
       });
 
       await interaction.reply({
@@ -443,7 +459,8 @@ async function handleSetupInteraction({ client, interaction }) {
           channelId ? `Channel: <#${channelId}>` : "Channel: nicht gesetzt (kein automatisches Posten)",
           changelogRoleIds.length > 0
             ? `Changelog-Rollen: ${changelogRoleIds.map((roleId) => `<@&${roleId}>`).join(" ")}`
-            : "Changelog-Rollen: nur Admins/Server verwalten"
+            : "Changelog-Rollen: nur Admins/Server verwalten",
+          changelogPingRoleId ? `Ping-Rolle: <@&${changelogPingRoleId}>` : "Ping-Rolle: kein Ping"
         ].join("\n"),
         flags: MessageFlags.Ephemeral
       });

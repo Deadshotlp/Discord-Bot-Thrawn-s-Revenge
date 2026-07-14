@@ -62,7 +62,8 @@ function buildStatusText(moduleName, moduleState) {
       activeText,
       `Channel: ${toChannelMention(config.channelId)}`,
       `Repos: ${repos.length}`,
-      `Changelog-Rollen: ${changelogRoleIds.length}`
+      `Changelog-Rollen: ${changelogRoleIds.length}`,
+      `Ping-Rolle: ${toRoleMention(config.changelogPingRoleId)}`
     ].join("\n");
   }
 
