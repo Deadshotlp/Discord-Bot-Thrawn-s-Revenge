@@ -2,13 +2,13 @@ import { fetchLatestUpdate } from "./github.js";
 import { buildRepoUpdateEmbed } from "./embeds.js";
 
 async function pollGuild(client, guild) {
-  const { moduleConfigStore, logger, env } = client.botContext;
+  const { settingsStore, logger, env } = client.botContext;
 
-  if (!moduleConfigStore.isModuleEnabled(guild.id, "updates")) {
+  if (!settingsStore.isModuleEnabled(guild.id, "updates")) {
     return;
   }
 
-  const state = moduleConfigStore.getModuleState(guild.id, "updates");
+  const state = settingsStore.getModuleState(guild.id, "updates");
   const config = state?.config || {};
   const channelId = config.channelId;
   const repos = Array.isArray(config.repos) ? config.repos : [];
@@ -49,7 +49,7 @@ async function pollGuild(client, guild) {
   }
 
   if (changed) {
-    moduleConfigStore.setModuleConfig(guild.id, "updates", { ...config, repos });
+    settingsStore.setModuleConfig(guild.id, "updates", { ...config, repos });
   }
 }
 

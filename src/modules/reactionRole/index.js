@@ -177,7 +177,7 @@ async function handleReactionRoleButtonInteraction({ client, interaction }) {
     return;
   }
 
-  const moduleState = client.botContext.moduleConfigStore.getModuleState(interaction.guildId, "reaction-role");
+  const moduleState = client.botContext.settingsStore.getModuleState(interaction.guildId, "reaction-role");
   const bindings = normalizeReactionRoleBindings(moduleState?.config?.bindings);
   const matchedBinding = bindings.find((binding) => binding.messageId === messageId && binding.roleId === roleId);
 
@@ -348,7 +348,7 @@ async function handleReactionRoleInteraction({ client, interaction }) {
     return;
   }
 
-  const moduleState = client.botContext.moduleConfigStore.getModuleState(interaction.guildId, "reaction-role");
+  const moduleState = client.botContext.settingsStore.getModuleState(interaction.guildId, "reaction-role");
   const existingBindings = normalizeReactionRoleBindings(moduleState?.config?.bindings);
   const nextBindings = [...existingBindings];
   let savedMappings = 0;
@@ -376,7 +376,7 @@ async function handleReactionRoleInteraction({ client, interaction }) {
   }
 
   if (savedMappings > 0) {
-    client.botContext.moduleConfigStore.setModuleConfig(interaction.guildId, "reaction-role", {
+    client.botContext.settingsStore.setModuleConfig(interaction.guildId, "reaction-role", {
       bindings: nextBindings
     });
   }

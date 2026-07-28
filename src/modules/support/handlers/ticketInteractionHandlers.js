@@ -124,7 +124,7 @@ async function postTicketTranscript({ interaction, ticket, config, departmentNam
 }
 
 export async function handleTicketOpenButtonInteraction({ client, interaction }) {
-  const supportState = client.botContext.moduleConfigStore.getModuleState(interaction.guildId, "support");
+  const supportState = client.botContext.settingsStore.getModuleState(interaction.guildId, "support");
   const config = supportState?.config || {};
   const departments = normalizeDepartments(config.departments);
 
@@ -152,7 +152,7 @@ export async function handleTicketDepartmentSelectInteraction({ client, interact
     return;
   }
 
-  const supportState = client.botContext.moduleConfigStore.getModuleState(interaction.guildId, "support");
+  const supportState = client.botContext.settingsStore.getModuleState(interaction.guildId, "support");
   const config = supportState?.config || {};
   const department = getDepartmentById(config.departments, selectedDepartmentId);
 
@@ -196,8 +196,8 @@ export async function handleTicketOpenModalInteraction({ client, interaction }) 
     return;
   }
 
-  const { moduleConfigStore, env, logger } = client.botContext;
-  const config = getSupportConfig(moduleConfigStore, interaction.guildId, env);
+  const { settingsStore, env, logger } = client.botContext;
+  const config = getSupportConfig(settingsStore, interaction.guildId, env);
   const department = getDepartmentById(config.departments, departmentId);
 
   if (!department) {
@@ -324,7 +324,7 @@ export async function handleTicketEscalateInteraction({ client, interaction, tic
     return;
   }
 
-  const config = getSupportConfig(client.botContext.moduleConfigStore, interaction.guildId, client.botContext.env);
+  const config = getSupportConfig(client.botContext.settingsStore, interaction.guildId, client.botContext.env);
   const departments = normalizeDepartments(config.departments);
   const currentDepartment = getDepartmentById(departments, ticket.departmentId);
 
@@ -362,7 +362,7 @@ export async function handleTicketEscalationSelectInteraction({ client, interact
   }
 
   const selectedDepartmentId = interaction.values?.[0] || "";
-  const config = getSupportConfig(client.botContext.moduleConfigStore, interaction.guildId, client.botContext.env);
+  const config = getSupportConfig(client.botContext.settingsStore, interaction.guildId, client.botContext.env);
   const departments = normalizeDepartments(config.departments);
   const currentDepartment = getDepartmentById(departments, ticket.departmentId);
 
@@ -391,7 +391,12 @@ export async function handleTicketEscalationSelectInteraction({ client, interact
     return;
   }
 
-  const escalatedTicket = escalateSupportTicket(interaction.guildId, ticket.id, selectedDepartmentId);
+  const escalatedTicket = escalateSupportTicket(
+    interaction.guildId,
+    ticket.id,
+    selectedDepartmentId,
+    interaction.user.id
+  );
   if (!escalatedTicket || escalatedTicket.status !== "open") {
     await interaction.reply({
       content: "Ticket konnte nicht eskaliert werden.",
@@ -461,7 +466,7 @@ export async function handleTicketCloseInteraction({ client, interaction, ticket
     return;
   }
 
-  const config = getSupportConfig(client.botContext.moduleConfigStore, interaction.guildId, client.botContext.env);
+  const config = getSupportConfig(client.botContext.settingsStore, interaction.guildId, client.botContext.env);
   const department = getDepartmentById(config.departments, ticket.departmentId);
 
   if (!canHandleTicket(interaction, ticket, department)) {

@@ -125,8 +125,8 @@ export const supportDepartmentCommand = {
       return;
     }
 
-    const { moduleConfigStore } = client.botContext;
-    const supportState = moduleConfigStore.getModuleState(interaction.guildId, "support");
+    const { settingsStore } = client.botContext;
+    const supportState = settingsStore.getModuleState(interaction.guildId, "support");
 
     if (!supportState) {
       await interaction.reply({
@@ -169,7 +169,7 @@ export const supportDepartmentCommand = {
         { id: departmentId, name, roleIds }
       ];
 
-      moduleConfigStore.setModuleConfig(interaction.guildId, "support", {
+      settingsStore.setModuleConfig(interaction.guildId, "support", {
         departments: updatedDepartments,
         defaultDepartmentId: defaultDepartmentId || departmentId
       });
@@ -205,7 +205,7 @@ export const supportDepartmentCommand = {
       }
 
       const nextDefaultDepartmentId = ensureValidDefaultDepartmentId(updatedDepartments, defaultDepartmentId);
-      moduleConfigStore.setModuleConfig(interaction.guildId, "support", {
+      settingsStore.setModuleConfig(interaction.guildId, "support", {
         departments: updatedDepartments,
         defaultDepartmentId: nextDefaultDepartmentId
       });
@@ -236,7 +236,7 @@ export const supportDepartmentCommand = {
           : department
       ));
 
-      moduleConfigStore.setModuleConfig(interaction.guildId, "support", {
+      settingsStore.setModuleConfig(interaction.guildId, "support", {
         departments: updatedDepartments,
         defaultDepartmentId
       });
@@ -265,7 +265,7 @@ export const supportDepartmentCommand = {
 
       const departmentId = targetDepartment.id;
 
-      moduleConfigStore.setModuleConfig(interaction.guildId, "support", {
+      settingsStore.setModuleConfig(interaction.guildId, "support", {
         departments,
         defaultDepartmentId: departmentId
       });

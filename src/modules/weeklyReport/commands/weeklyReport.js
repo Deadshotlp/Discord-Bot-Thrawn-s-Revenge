@@ -15,8 +15,8 @@ import { getWeeklyReport, listWeeklyReportsForWeek } from "../services/reports.j
 import { formatWeekLabel, getTargetWeekKey } from "../services/week.js";
 
 export function getGuildDepartments(client, guildId) {
-  const { moduleConfigStore, env } = client.botContext;
-  const supportState = moduleConfigStore.getModuleState(guildId, "support");
+  const { settingsStore, env } = client.botContext;
+  const supportState = settingsStore.getModuleState(guildId, "support");
   return ensureDefaultDepartment(
     supportState?.config?.departments,
     env.supportDefaultDepartmentName,
@@ -34,8 +34,8 @@ export function getSubmittableDepartments(client, guildId, member) {
 }
 
 export function getWeeklyReportConfig(client, guildId) {
-  const { moduleConfigStore } = client.botContext;
-  const moduleState = moduleConfigStore.getModuleState(guildId, "weekly-report");
+  const { settingsStore } = client.botContext;
+  const moduleState = settingsStore.getModuleState(guildId, "weekly-report");
   return normalizeWeeklyReportConfig(moduleState?.config);
 }
 

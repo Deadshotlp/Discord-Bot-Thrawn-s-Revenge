@@ -5,17 +5,22 @@ import {
 } from "discord.js";
 
 import { env } from "./config/env.js";
-import { ModuleConfigStore } from "./core/moduleConfigStore.js";
+import { closeDb } from "./core/db.js";
+import { SettingsStore } from "./core/settingsStore.js";
+import { Scheduler } from "./core/scheduler.js";
 import { createLogger } from "./core/logger.js";
 import { buildCommandRegistry, runEventHandlers } from "./core/moduleRuntime.js";
 import { registerEvents } from "./events/registerEvents.js";
 import { modules } from "./modules/index.js";
 
 const logger = createLogger(env.logLevel);
-const moduleConfigStore = new ModuleConfigStore(modules, logger);
+const settingsStore = new SettingsStore(modules, logger);
+const scheduler = new Scheduler(logger);
 const { commandRegistry, commandPayload, commandToModule } = buildCommandRegistry(modules);
 
 const client = new Client({
+  // Bewusst ohne das privilegierte Intent GuildMembers: Mitglieder werden bei
+  // Bedarf einzeln per REST nachgeladen, das reicht für Dashboard und Module.
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
@@ -35,7 +40,8 @@ client.botContext = {
   env,
   logger,
   modules,
-  moduleConfigStore,
+  settingsStore,
+  scheduler,
   commandRegistry,
   commandToModule,
   commandPayload
@@ -53,8 +59,22 @@ async function shutdown(exitCode, reason) {
   shuttingDown = true;
   logger.info("Bot wird heruntergefahren", { reason });
 
+  scheduler.stopAll();
+
+  const webServer = client.botContext.webServer;
+  await new Promise((resolve) => {
+    if (!webServer) {
+      resolve();
+      return;
+    }
+
+    webServer.close(() => resolve());
+    setTimeout(resolve, 3000).unref?.();
+  });
+
   await runEventHandlers(modules, "shutdown", { client }, logger);
   await client.destroy().catch(() => null);
+  closeDb();
 
   process.exit(exitCode);
 }

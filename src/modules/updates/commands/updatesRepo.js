@@ -2,8 +2,8 @@ import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import { canManageServer } from "../../../core/permissions.js";
 import { fetchLatestUpdate, fetchRepoInfo, parseRepoSlug } from "../services/github.js";
 
-function getRepos(moduleConfigStore, guildId) {
-  const state = moduleConfigStore.getModuleState(guildId, "updates");
+function getRepos(settingsStore, guildId) {
+  const state = settingsStore.getModuleState(guildId, "updates");
   return Array.isArray(state?.config?.repos) ? state.config.repos : [];
 }
 
@@ -26,8 +26,8 @@ async function handleAdd({ client, interaction }) {
     return;
   }
 
-  const { moduleConfigStore, env } = client.botContext;
-  const repos = getRepos(moduleConfigStore, interaction.guildId);
+  const { settingsStore, env } = client.botContext;
+  const repos = getRepos(settingsStore, interaction.guildId);
 
   if (findRepoIndex(repos, slug.owner, slug.repo) !== -1) {
     await interaction.reply({
@@ -49,8 +49,8 @@ async function handleAdd({ client, interaction }) {
 
   const baseline = await fetchLatestUpdate(slug.owner, slug.repo, env.githubToken).catch(() => null);
 
-  const state = moduleConfigStore.getModuleState(interaction.guildId, "updates");
-  const currentRepos = getRepos(moduleConfigStore, interaction.guildId);
+  const state = settingsStore.getModuleState(interaction.guildId, "updates");
+  const currentRepos = getRepos(settingsStore, interaction.guildId);
   currentRepos.push({
     owner: slug.owner,
     repo: slug.repo,
@@ -58,7 +58,7 @@ async function handleAdd({ client, interaction }) {
     lastSeenId: baseline?.id || ""
   });
 
-  moduleConfigStore.setModuleConfig(interaction.guildId, "updates", {
+  settingsStore.setModuleConfig(interaction.guildId, "updates", {
     ...(state?.config || {}),
     repos: currentRepos
   });
@@ -71,8 +71,8 @@ async function handleAdd({ client, interaction }) {
 async function handleRemove({ client, interaction }) {
   const rawSlug = interaction.options.getString("repo", true);
   const slug = parseRepoSlug(rawSlug);
-  const { moduleConfigStore } = client.botContext;
-  const repos = getRepos(moduleConfigStore, interaction.guildId);
+  const { settingsStore } = client.botContext;
+  const repos = getRepos(settingsStore, interaction.guildId);
 
   const index = slug
     ? findRepoIndex(repos, slug.owner, slug.repo)
@@ -87,8 +87,8 @@ async function handleRemove({ client, interaction }) {
   }
 
   const [removed] = repos.splice(index, 1);
-  const state = moduleConfigStore.getModuleState(interaction.guildId, "updates");
-  moduleConfigStore.setModuleConfig(interaction.guildId, "updates", {
+  const state = settingsStore.getModuleState(interaction.guildId, "updates");
+  settingsStore.setModuleConfig(interaction.guildId, "updates", {
     ...(state?.config || {}),
     repos
   });
@@ -100,8 +100,8 @@ async function handleRemove({ client, interaction }) {
 }
 
 async function handleList({ client, interaction }) {
-  const { moduleConfigStore } = client.botContext;
-  const repos = getRepos(moduleConfigStore, interaction.guildId);
+  const { settingsStore } = client.botContext;
+  const repos = getRepos(settingsStore, interaction.guildId);
 
   if (repos.length === 0) {
     await interaction.reply({
@@ -157,8 +157,8 @@ export const updatesRepoCommand = {
       return;
     }
 
-    const { moduleConfigStore } = client.botContext;
-    const repos = getRepos(moduleConfigStore, interaction.guildId);
+    const { settingsStore } = client.botContext;
+    const repos = getRepos(settingsStore, interaction.guildId);
     const focused = interaction.options.getFocused().toLowerCase();
 
     const choices = repos

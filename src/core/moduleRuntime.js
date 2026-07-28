@@ -40,7 +40,7 @@ export function getEventHandlers(modules, eventName) {
 
 export async function runEventHandlers(modules, eventName, payload, logger) {
   const handlers = getEventHandlers(modules, eventName);
-  const store = payload?.client?.botContext?.moduleConfigStore;
+  const store = payload?.client?.botContext?.settingsStore;
   const guildId = payload?.guild?.id || payload?.interaction?.guildId || null;
 
   for (const { moduleName, handler } of handlers) {
@@ -48,7 +48,6 @@ export async function runEventHandlers(modules, eventName, payload, logger) {
     if (
       store
       && guildId
-      && moduleName !== "setup"
       && !handlerAlwaysAvailable
       && !store.isModuleEnabled(guildId, moduleName)
     ) {

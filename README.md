@@ -1,250 +1,227 @@
 # Thrawn's Revenge Discord Bot
 
-Der Bot wurde vollständig zurückgesetzt und als modulare Basisstruktur neu aufgebaut.
+Modularer Discord-Bot für Community- und Gameserver-Betrieb. Die Konfiguration
+läuft vollständig über ein Web-Dashboard – in Discord gibt es kein Setup-Panel
+mehr, sondern nur noch Befehle für den täglichen Betrieb.
 
-## Ziel
+## Überblick
 
-Ein sauberer Startpunkt, auf dem neue Features als eigenständige Module entwickelt werden können.
-
-## Struktur
-
-```text
-src/
-  config/    Env-Parsing (.env)
-  core/      Logger, Modul-Laufzeit, Config-Store, Berechtigungen, gemeinsame Utils
-  events/    Discord-Event-Registrierung und Dispatch an die Module
-  modules/   Ein Ordner pro Feature (support, verify, setup, updates, reactionRole,
-             contentCreator, serverStatus, weeklyReport, meeting, system) mit jeweils
-             index.js, commands/, services/ und optional handlers/
-  index.js   Einstiegspunkt (Client, Login, Graceful Shutdown)
-```
-
-Jedes Modul exportiert `name`, `defaultEnabled`, `defaultConfig`, `commands` und `events` und wird in `src/modules/index.js` registriert.
+| Bereich | Was der Bot macht |
+| --- | --- |
+| **Server-Monitoring** | Beliebig viele Game- und Webserver, feine Abtastraten, Verlaufsdaten, Live-Panel in Discord |
+| **Support** | Ticket-System und Sprach-Support mit Fallverwaltung, Departments, Transkripten |
+| **Team-Abmeldungen** | Abwesenheiten pro Department erfassen, ankündigen und als Übersicht pflegen |
+| **Steam-Verknüpfung** | SteamID ↔ Discord, daraus Spielzeiterfassung pro Server |
+| **Meetings** | Wiederkehrende Termine mit Agenda, An-/Abmeldung, Anwesenheitsauswertung |
+| **Wochenberichte** | Abgaben je Department, terminierte Veröffentlichung |
+| **Updates & Changelogs** | GitHub-Releases beobachten, manuelle Changelogs posten |
+| **Content-Creator** | YouTube- und Twitch-Benachrichtigungen |
+| **Reaction-Roles / Verify** | Rollenvergabe per Button |
 
 ## Schnellstart
 
-1. `.env` aus `.env.example` erstellen.
-2. `DISCORD_TOKEN` eintragen.
-3. Abhängigkeiten installieren:
+1. `.env` aus `.env.example` erstellen und `DISCORD_TOKEN` eintragen.
+2. Für das Dashboard zusätzlich `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` und
+   `WEB_BASE_URL` setzen. Im Discord Developer Portal unter **OAuth2 → Redirects**
+   `<WEB_BASE_URL>/api/auth/callback` eintragen.
+3. Abhängigkeiten installieren und starten:
 
 ```bash
 npm install
 ```
 
-4. Bot starten:
-
 ```bash
 npm run start
 ```
 
-## Entwicklung
+4. Dashboard öffnen (`WEB_BASE_URL`) oder in Discord `/dashboard` ausführen.
 
-- `npm run dev` – Start mit Auto-Reload bei Dateiänderungen.
-- `npm run lint` – ESLint über das gesamte Projekt.
-- `npm test` – Testsuite (Node-Test-Runner).
-- Bei jedem Push läuft die CI (GitHub Actions) mit Lint und Tests.
+Es wird **kein privilegiertes Intent** benötigt. Mitglieder lädt der Bot bei
+Bedarf einzeln per REST nach.
 
-## Daten
+## Architektur
 
-Konfiguration und Datenbanken (SQLite) liegen im Verzeichnis `data/` im Projektordner.
-Über die Umgebungsvariable `DATA_DIR` kann ein anderes Verzeichnis gesetzt werden –
-z. B. für Deployments mit persistentem Volume.
+```text
+src/
+  config/     Env-Parsing
+  core/       Logger, SQLite, Einstellungen, Scheduler, Berechtigungen, Audit
+  events/     Discord-Event-Registrierung und Dispatch an die Module
+  modules/    Ein Ordner pro Feature mit index.js, commands/, services/, handlers/
+  web/        HTTP-Server, Discord-OAuth, REST-API
+web/public/   Dashboard-Oberfläche (reines ES-Modul-Frontend, kein Build-Schritt)
+addons/       Spielserver-Addons (Garry's Mod Bridge)
+```
 
-## Verfügbare Commands
+Jedes Modul exportiert `name`, `label`, `description`, `defaultEnabled`,
+`defaultConfig`, `commands` und `events` und wird in `src/modules/index.js`
+registriert. Module lassen sich pro Server einzeln aktivieren.
 
-- `/ping`
-- `/bot-info`
-- `/setup-panel`
-- `/verify-panel`
-- `/support-department`
-- `/support-department-ui`
-- `/support-ticket-panel`
-- `/updates-channel`
-- `/updates-repo`
-- `/changelog`
-- `/reaction-role`
-- `/server-status`
-- `/wochenbericht`
-- `/meeting`
-- `/meeting-admin`
+Zustand liegt in `data/`:
 
-## Modulverwaltung
+- `bot.db` – Modul-Einstellungen, Monitoring, Abmeldungen, Steam-Links, Sessions, Audit
+- `support-tickets.db`, `support-cases.db`, `meetings.db`, `weekly-reports.db` – Fachdaten
 
-- Mit `/setup-panel` öffnest du die zentrale Modulverwaltung.
-- Module können pro Server individuell ein- oder ausgeschaltet werden.
-- Für aktive Module gibt es Konfigurationsoptionen (Verify, Support, Updates, Content-Creator, Server-Status, Wochenberichte, Meetings).
-- Basiswerte sind hinterlegt; fehlende Rollen/Channel werden automatisch erstellt.
+Über `DATA_DIR` lässt sich ein anderes Verzeichnis setzen, z. B. ein
+persistentes Volume. Eine vorhandene `data/module-config.json` aus der
+Vorgängerversion wird beim ersten Start automatisch übernommen.
 
-## Verhalten beim Guild-Join
+## Web-Dashboard
 
-Wenn `AUTO_SETUP_CHANNEL_ON_GUILD_JOIN=true` gesetzt ist:
+Die Anmeldung erfolgt per Discord-OAuth. Was sichtbar ist, ergibt sich aus den
+echten Rollen auf dem Server:
 
-- Der Bot erstellt (falls nötig) den Setup-Channel aus `SETUP_CHANNEL_NAME`.
-- Anschließend postet er dort die zentrale Modulverwaltung.
-- Verify-Standardwerte (Rolle/Channel) werden nur erstellt, wenn das Verify-Modul aktiviert ist.
-- Support-Standardwerte (Warteraum/Verwaltung/Talks) werden nur erstellt, wenn das Support-Modul aktiviert ist.
+| Stufe | Wer | Rechte |
+| --- | --- | --- |
+| **Admin** | Administrator / Server verwalten | alles, inkl. Module und Departments |
+| **Leitung** | Mitglied einer Leitungs-Rolle eines Departments | Tickets, Team-Statistiken, Meetings, Freigaben |
+| **Team** | Mitglied einer Department-Rolle | Tickets und Fälle des eigenen Bereichs |
+| **Mitglied** | sonstige Servermitglieder | eigene Abmeldungen, Meetings, Steam, Serverstatus |
 
-## Verifizierung
+Seiten: Übersicht, Server-Monitoring, Tickets, Team-Statistiken, Abmeldungen,
+Meetings, Steam & Spielzeit, Einstellungen, Protokoll.
 
-- Im Verify-Channel steht ein Regeltext.
-- Das Verify-Panel enthält den Button `Regeln akzeptieren und verifizieren`.
-- Beim Klick auf den Button wird die konfigurierte Verify-Rolle vergeben.
-- Wenn Verify aktiviert ist und keine IDs gesetzt sind, erstellt der Bot automatisch:
-- eine Rolle mit `VERIFY_DEFAULT_ROLE_NAME`
-- einen Text-Channel mit `VERIFY_DEFAULT_CHANNEL_NAME`
+Das Frontend besteht aus reinen ES-Modulen ohne Build-Schritt – es gibt nichts zu
+kompilieren, `npm install` genügt. Hinter einem Reverse Proxy sollte
+`WEB_BASE_URL` auf die externe HTTPS-Adresse zeigen; Session-Cookies werden dann
+automatisch als `Secure` gesetzt.
+
+## Server-Monitoring
+
+Unterstützte Servertypen:
+
+| Typ | Protokoll | Spielerliste |
+| --- | --- | --- |
+| Source / Garry's Mod | A2S über UDP | Namen, mit Addon auch SteamIDs |
+| Minecraft | Server List Ping | Auszug aus dem Sample |
+| FiveM / alt:V | HTTP (`dynamic.json`, `players.json`) | inkl. SteamID |
+| HTTP / Website | HTTP-Statuscode | – |
+| TCP-Port | Verbindungsaufbau | – |
+
+- Server werden im Dashboard oder mit `/server add` angelegt und **sofort ohne
+  Neustart** überwacht.
+- Abtastrate ist pro Server einstellbar (15–3600 s, Standard 30 s).
+- Rohdaten bleiben 14 Tage, Stundenwerte 180 Tage, Tageswerte dauerhaft.
+- Erfasst werden Online-Status, Spielerzahl, Slots, Map, Bots, Ping und Version.
+- Ausgewertet werden Ø/Peak je Zeitraum, Auslastung, Uptime, Trend gegenüber dem
+  Vortag, Primetime, Tages- und Wochentagsprofil, Map-Verteilung sowie
+  Einzelspieler pro Woche/Monat.
+- Bei Online-/Offline-Wechsel kann der Bot eine Rolle pingen.
+
+Befehle: `/server add|list|edit|remove|status|vergleich|top`
+
+## Team-Abmeldungen
+
+- `/abmeldung melden von:24.12.2026 bis:02.01.2027 art:Urlaub` – Datumsangaben
+  auch im deutschen Format.
+- Zuordnung zu Departments erfolgt automatisch über die Rollen des Mitglieds
+  oder wird explizit gewählt.
+- Ankündigung im Department-Channel (Fallback: allgemeiner Channel), dazu eine
+  laufend aktualisierte Übersicht „wer ist heute weg / wer ist geplant weg“.
+- Optional Freigabepflicht durch die Bereichsleitung.
+- Im Dashboard gibt es zusätzlich eine Zeitleiste pro Department.
+
+Befehle: `/abmeldung melden|meine|zurueckziehen|liste|freigeben`
+
+## Steam-Verknüpfung und Spielzeit
+
+- Im Dashboard per **Steam-Login** (OpenID, kein API-Key nötig).
+- Oder im Spiel: `/steam verknuepfen` in Discord → Code im Spielchat eingeben
+  (`!discord ABC123`).
+- Oder manuell durch das Team: `/steam setzen @mitglied <SteamID>`.
+
+Für SteamID-genaue Spielzeit auf Source-Servern wird das Addon
+[`addons/gmod-bot-bridge`](addons/gmod-bot-bridge/README.md) benötigt – A2S
+liefert nur Spielernamen. FiveM-Server brauchen kein Addon.
+
+Befehle: `/steam verknuepfen|status|entfernen|setzen|spielzeit|wer`
 
 ## Support
 
-- Ein Support-Department besteht aus mehreren Rollen.
-- Bei Join in den Support-Warteraum wird automatisch ein Fall im Verwaltungschannel erstellt.
-- Dort kann ein Supporter den Fall claimen.
-- Beim Claim werden Supporter und Nutzer in einen freien Support-Talk verschoben.
-- Über `/support-ticket-panel` kann ein Ticket-Panel gepostet werden.
-- Tickets werden über einen Button gestartet.
-- Nach dem Button wählen Nutzer das Department im Dropdown.
-- Danach geben Nutzer Ticket-Name und Beschreibung an.
-- Das Ticket-System nutzt die Department-Rollen aus dem Support-Modul für Kanalzugriff und Benachrichtigung.
-- Tickets können über den Ticket-Button auf ein anderes Department eskaliert werden.
-- Eine Ticket-Eskalation ist nur für Mitglieder des aktuellen Ticket-Departments möglich.
-- Beim Schließen eines Tickets wird automatisch ein Transkript erstellt.
-- Während des Falls gibt es Aktionen über das Panel:
-- Eskalieren (pingt ein anderes Department)
-- Fall schließen (beide werden aus Voice entfernt)
-- Transkript (erstellt eine Falldatei im Verwaltungschannel)
-- Departments können mit `/support-department` (Slash-Command) oder `/support-department-ui` (Interface) verwaltet werden.
+- Ticket-Panel, Department-Auswahl, Eskalation und automatische Transkripte.
+- Sprach-Support: Beim Join in den Warteraum entsteht ein Fall im
+  Verwaltungschannel, ein Supporter claimt ihn, beide werden in einen freien
+  Talk-Channel verschoben.
+- Jede Aktion (Ticket geschlossen, Fall übernommen, eskaliert) wird für die
+  Team-Statistik erfasst.
 
-## Updates
+Befehle: `/support-department`, `/support-ticket-panel`
 
-- Mit `/updates-channel` legst du fest, in welchem Kanal automatische Repo-Updates und Changelogs gepostet werden.
-- Mit `/updates-repo add owner/repo` beobachtet der Bot ein GitHub-Repo. Beim Hinzufügen wird der aktuelle Stand als Basislinie gespeichert, es wird also nichts Rückwirkendes gepostet.
-- Der Bot prüft beobachtete Repos alle `UPDATES_POLL_INTERVAL_MINUTES` Minuten (Standard: 15) auf neue GitHub-Releases. Hat ein Repo keine Releases, wird stattdessen der neueste Commit auf dem Standard-Branch verwendet.
-- Neue Updates werden automatisch als Embed im konfigurierten Kanal gepostet.
-- Mit `/updates-repo remove` bzw. `/updates-repo list` verwaltest du die beobachtete Liste.
-- Mit `/changelog` öffnet sich ein Formular (Titel, optionale Version, Änderungstext), das nach dem Absenden als Embed im konfigurierten Updates-Kanal gepostet wird — für manuelle Ankündigungen ohne GitHub-Release.
-- Optional: `GITHUB_TOKEN` in der `.env` erhöht das GitHub-API-Rate-Limit (60 → 5000 Anfragen/Stunde), ist aber für öffentliche Repos nicht zwingend erforderlich.
+### Sprach-Transkripte (optional)
 
-## Sprach-Transkripte (Support-Talks)
-
-Optionale Funktion: Support-Gespräche im Talk-Channel werden lokal transkribiert
-(kein Cloud-Dienst, keine laufenden Kosten). Der Bot nutzt dafür `whisper.cpp`.
-
-**Ablauf**
-
-- Nach dem Claim postet der Bot im Talk-Channel eine Zustimmungs-Anfrage.
-- Die Aufnahme startet **erst, wenn alle Teilnehmer zustimmen** (Button); es wird
-  nur aufgenommen, wer zugestimmt hat. Ein Indikator zeigt die laufende Aufnahme an.
-- Beim Schließen des Falls (oder über „Aufnahme beenden") wird das Gespräch
-  transkribiert und als Datei im Transkript-/Verwaltungs-Channel gepostet.
-- Die Audio-Daten werden nach der Transkription gelöscht; nur der Text bleibt.
+Support-Gespräche werden lokal via `whisper.cpp` transkribiert – kein
+Cloud-Dienst, keine laufenden Kosten. Die Aufnahme startet **erst, wenn alle
+Teilnehmer zugestimmt haben**; Audiodaten werden nach der Transkription gelöscht.
 
 > **Rechtlicher Hinweis:** Das Aufzeichnen von Gesprächen ohne Einwilligung aller
-> Beteiligten ist in Deutschland strafbar (§ 201 StGB). Die Zustimmungsabfrage darf
-> nicht umgangen werden.
+> Beteiligten ist in Deutschland strafbar (§ 201 StGB). Die Zustimmungsabfrage
+> darf nicht umgangen werden.
 
-**Einrichtung (auch im Wings-/Pterodactyl-Container)**
+Einrichtung (auch im Wings-/Pterodactyl-Container, ohne Root):
 
-Es wird keine Root-Installation benötigt – Binary, Bibliotheken und Modell liegen
-einfach im Server-Verzeichnis:
+1. Linux-Release von `whisper.cpp` (`whisper-bin-ubuntu-x64`) als **kompletten
+   Ordner** hochladen – `whisper-cli` ist dynamisch gelinkt und braucht die
+   `.so`-Dateien im selben Ordner. `chmod +x whisper-cli`.
+2. Modell herunterladen, z. B. `ggml-medium-q5_0.bin` (gute Deutsch-Qualität,
+   ~1,5 GB RAM) oder `ggml-small-q5_1.bin` (~600 MB).
+3. In der `.env`: `WHISPER_BINARY_PATH`, `WHISPER_MODEL_PATH`, optional
+   `WHISPER_LIB_DIR`, `WHISPER_THREADS`, `WHISPER_LANGUAGE`.
 
-1. `whisper.cpp` besorgen. Am einfachsten das fertige Linux-Release
-   (`whisper-bin-ubuntu-x64` aus den GitHub-Releases): den **kompletten Ordner**
-   hochladen, denn `whisper-cli` ist dynamisch gelinkt und braucht die
-   mitgelieferten `.so`-Dateien (`libwhisper.so`, `libggml*.so`) **im selben Ordner**.
-   `whisper-cli` ausführbar machen (`chmod +x`).
-2. Ein Modell herunterladen, z. B. `ggml-medium-q5_0.bin` (sehr gute Deutsch-Qualität,
-   ~1,5 GB RAM bei Transkription) oder `ggml-small-q5_1.bin` (~600 MB), z. B. von
-   `https://huggingface.co/ggerganov/whisper.cpp`.
-3. In der `.env` setzen:
-   - `WHISPER_BINARY_PATH=/home/container/whisper-bin-ubuntu-x64/whisper-cli`
-   - `WHISPER_MODEL_PATH=/home/container/ggml-medium-q5_0.bin`
-   - optional `WHISPER_LIB_DIR`, falls die `.so`-Dateien **nicht** neben der Binary
-     liegen (Standard: Ordner der Binary).
-   - optional `WHISPER_THREADS` (Standard 2) und `WHISPER_LANGUAGE` (Standard `de`).
-
-Der Bot setzt beim Aufruf automatisch `LD_LIBRARY_PATH` auf den Ordner der Binary
-(bzw. `WHISPER_LIB_DIR`), damit die Bibliotheken gefunden werden. Sind beide Pfade
-gesetzt und die Dateien vorhanden, aktiviert sich das Feature automatisch.
-Transkriptionen laufen seriell in einer Warteschlange, damit der Bot-Prozess nicht
-überlastet wird.
-
-Vor dem Aktivieren im Container testen (findet die Binary ihre Bibliotheken?):
+Vorab testen:
 
 ```bash
-cd /home/container/whisper-bin-ubuntu-x64
-LD_LIBRARY_PATH=. ./whisper-cli --help
+cd /home/container/whisper-bin-ubuntu-x64 && LD_LIBRARY_PATH=. ./whisper-cli --help
 ```
 
-Kommt die Usage-Ausgabe, passt alles. Kommt `error while loading shared libraries:
-libwhisper.so.1`, fehlen die `.so`-Dateien neben der Binary.
+## Meetings
+
+- Beliebig viele Meetings pro Server, konfiguriert im Dashboard.
+- Ankündigung zur Vorlaufzeit mit Agenda und Buttons „Anmelden“ / „Abmelden“ /
+  „Thema einreichen“.
+- 5 Minuten nach Beginn wertet der Bot die Anwesenheit aus:
+  ✅ anwesend (im Voice) · 📝 entschuldigt (abgemeldet) · ❌ unentschuldigt.
+- Themen sind einmalig oder als 🔁 Dauerthema markierbar.
+
+Befehle: `/meeting anmelden|abmelden|thema|status`
 
 ## Wochenberichte
 
-- Die Leiter der Support-Departments geben formatierte Textblöcke ab; zum konfigurierten
-  Termin werden alle Abgaben zusammengeführt und veröffentlicht.
-- Leiter-Rollen werden pro Department gesetzt: über `/support-department set-leads`
-  oder den Button `Leiter setzen` in `/support-department-ui`.
-- Abgabe mit `/wochenbericht abgeben` (Modal, Markdown möglich, bis 3900 Zeichen).
-  Erneutes Absenden überschreibt die Abgabe; leeres Absenden löscht sie.
-- Abgaben zählen zur laufenden Kalenderwoche; nach dem Veröffentlichungstermin
-  beginnt automatisch die nächste Berichtswoche.
-- Veröffentlichung: Kopfzeile mit Kalenderwoche + ein Embed pro Department
-  (fehlende Abgaben werden als „Keine Abgabe" markiert).
-- Konfiguration über das Setup-Panel: Channel, Wochentag, Uhrzeit sowie eine
-  optionale Erinnerung (Standard: 24 h vorher pingt der Bot die Leiter-Rollen
-  der Departments ohne Abgabe).
-- `/wochenbericht vorschau` zeigt Leitern und Admins die aktuelle Fassung,
-  `/wochenbericht veroeffentlichen` veröffentlicht sofort (nur Admins).
-- Wurde der Termin verpasst (Bot offline), wird die Vorwoche automatisch
-  nachveröffentlicht, sobald der Bot wieder läuft.
+- Abgabe mit `/wochenbericht abgeben` (Modal, Markdown, bis 3900 Zeichen).
+- Veröffentlichung zum konfigurierten Termin: Kopfzeile mit Kalenderwoche plus
+  ein Embed je Department; fehlende Abgaben werden markiert.
+- Optionale Erinnerung an die Leitungs-Rollen der Departments ohne Abgabe.
+- Verpasste Termine (Bot offline) werden beim nächsten Start nachgeholt.
 
-## Meetings (regelmäßige Treffen)
+## Updates & Content-Creator
 
-- Beliebig viele Meetings pro Server, konfiguriert über `/meeting-admin` (Admins)
-  oder den Setup-Panel-Button „Meetings verwalten".
-- Pro Meeting einstellbar: Name, Ankündigungs-Channel, Voice-Channel, Rhythmus
-  (Wochentag + Uhrzeit + Intervall in Wochen), Vorlaufzeit, Teilnehmer-Rollen
-  (dürfen an-/abmelden und zählen in der Auswertung) und Organisator-Rollen.
-- **Ankündigung:** Zum Vorlaufzeitpunkt (Standard 24 h vorher) postet der Bot eine
-  Ankündigung mit Agenda und Buttons „Anmelden" / „Abmelden" / „Thema einreichen"
-  und pingt die Teilnehmer-Rollen.
-- **An-/Abmeldung:** Über die Buttons oder `/meeting anmelden` / `/meeting abmelden`.
-  Die Listen werden in der Ankündigung live aktualisiert.
-- **Auswertung:** 5 Minuten nach Beginn postet der Bot automatisch die Anwesenheit:
-  - ✅ **Anwesend** = im Voice-Channel
-  - 📝 **Entschuldigt** = vorher abgemeldet
-  - ❌ **Unentschuldigt** = angemeldet, aber nicht erschienen und nicht abgemeldet
-- **Themen:** Teilnehmer reichen Themen per Button oder `/meeting thema` ein. Nach
-  der Sitzung werden einmalige Themen verbraucht; als **Dauerthema** markierte
-  Themen (🔁) kehren automatisch wieder. Organisatoren ändern Reihenfolge und
-  Dauerthema-Status unter „Themen" im Meeting-Menü.
-- `/meeting status` zeigt Termin, Agenda und An-/Abmeldezahlen.
+- `/updates-repo add owner/repo` beobachtet GitHub-Releases; beim Hinzufügen wird
+  der aktuelle Stand als Basislinie gespeichert.
+- `/changelog` öffnet ein Formular für manuelle Ankündigungen.
+- Content-Creator-Kanäle werden im Dashboard gepflegt; Profile werden gegen die
+  YouTube-/Twitch-API aufgelöst. Dafür sind `YOUTUBE_API_KEY` bzw.
+  `TWITCH_CLIENT_ID`/`TWITCH_CLIENT_SECRET` nötig.
 
-## Reaction-Roles
+## API für Spielserver
 
-- Mit `/reaction-role` wird ein Panel mit Rollen-Buttons erstellt (Emoji + Rolle).
-- Klick auf einen Button vergibt oder entfernt die zugehörige Rolle beim Nutzer.
+Für Server-Addons gibt es eine Token-authentifizierte Schnittstelle. Der Token
+wird im Dashboard je Server erzeugt und im Header `x-ingest-token` gesendet.
 
-## Content-Creator-Benachrichtigungen
+| Endpunkt | Zweck |
+| --- | --- |
+| `POST /api/ingest/players` | Spielerliste mit SteamID und Spielzeit melden |
+| `POST /api/ingest/link` | Verknüpfungscode eines Spielers einlösen |
+| `GET /api/ingest/ping` | Verbindung testen |
 
-- Überwacht YouTube-Kanäle und Twitch-Streamer per Polling (Intervall über `CREATOR_POLL_INTERVAL_SECONDS`).
-- Postet bei neuen Videos/Streams eine Ankündigung im konfigurierten Channel, optional mit Rollen-Ping.
-- Konfiguration (Channel, Rollen, beobachtete Kanäle) läuft über das Setup-Panel.
-- Erfordert `YOUTUBE_API_KEY` bzw. `TWITCH_CLIENT_ID`/`TWITCH_CLIENT_SECRET` in der `.env`.
+## Entwicklung
 
-## Server-Status (Game-Server-Monitoring)
+```bash
+npm run dev
+```
 
-- Fragt den Status eines Source-Engine-Servers (z. B. Garry's Mod) per A2S-Query-Protokoll ab (UDP, kein Server-Addon nötig).
-- `/server-status` zeigt sofort den aktuellen Status: Online/Offline, Map, Spielerzahl, Connect-Befehl.
-- Optional ein live aktualisiertes Status-Panel in einem festen Channel (wird per Setup-Panel konfiguriert).
-- Speichert alle `SERVER_STATUS_POLL_INTERVAL_SECONDS` (Standard 300s) einen Snapshot in einer eigenen SQLite-Datenbank.
-- Zeigt einen 7-Tage-Verlauf (Peak/Durchschnitt pro Tag) als Chart-Bild im Panel, gerendert über die QuickChart.io-Bild-API.
-- Verlaufsdaten werden nach 30 Tagen automatisch bereinigt.
-- "Direct Connect"-Button mit `steam://connect/ip:port`; falls Discord den Button ablehnt, bleibt der `connect ip:port`-Text als Fallback im Embed.
+- `npm run lint` – ESLint über Bot und Dashboard.
+- `npm test` – Testsuite (Node-Test-Runner).
+- Bei jedem Push läuft die CI mit Lint und Tests.
 
-## Module erweitern
-
-1. Neues Modul unter `src/modules/<modulname>` anlegen.
-2. `commands` und optional `events` exportieren.
-3. Modul in `src/modules/index.js` registrieren.
-
-So bleibt die Struktur klar getrennt und skalierbar.
+Neues Modul: Ordner unter `src/modules/<name>` anlegen, `commands`/`events`
+exportieren, in `src/modules/index.js` registrieren. Konfigurationsfelder für das
+Dashboard werden in `web/public/views/settings.js` unter `MODULE_FIELDS`
+beschrieben.

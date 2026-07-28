@@ -190,8 +190,8 @@ export const reactionRoleCommand = {
       return;
     }
 
-    const { moduleConfigStore } = client.botContext;
-    const moduleState = moduleConfigStore.getModuleState(interaction.guildId, "reaction-role");
+    const { settingsStore } = client.botContext;
+    const moduleState = settingsStore.getModuleState(interaction.guildId, "reaction-role");
 
     if (!moduleState) {
       await interaction.reply({
@@ -315,7 +315,7 @@ export const reactionRoleCommand = {
           nextBindings.push(binding);
         }
 
-        moduleConfigStore.setModuleConfig(interaction.guildId, "reaction-role", {
+        settingsStore.setModuleConfig(interaction.guildId, "reaction-role", {
           bindings: nextBindings
         });
 
@@ -366,7 +366,7 @@ export const reactionRoleCommand = {
         const nextBindings = [...bindings];
         const [removedBinding] = nextBindings.splice(removeIndex, 1);
 
-        moduleConfigStore.setModuleConfig(interaction.guildId, "reaction-role", {
+        settingsStore.setModuleConfig(interaction.guildId, "reaction-role", {
           bindings: nextBindings
         });
 

@@ -23,10 +23,10 @@ export const updatesChannelCommand = {
     }
 
     const channel = interaction.options.getChannel("channel");
-    const { moduleConfigStore } = client.botContext;
-    const state = moduleConfigStore.getModuleState(interaction.guildId, "updates");
+    const { settingsStore } = client.botContext;
+    const state = settingsStore.getModuleState(interaction.guildId, "updates");
 
-    moduleConfigStore.setModuleConfig(interaction.guildId, "updates", {
+    settingsStore.setModuleConfig(interaction.guildId, "updates", {
       ...(state?.config || {}),
       channelId: channel.id
     });

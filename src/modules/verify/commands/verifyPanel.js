@@ -25,7 +25,7 @@ export const verifyPanelCommand = {
     }
 
     const verifyState = interaction.inGuild()
-      ? client.botContext.moduleConfigStore.getModuleState(interaction.guildId, "verify")
+      ? client.botContext.settingsStore.getModuleState(interaction.guildId, "verify")
       : null;
 
     const rulesText = verifyState?.config?.rulesText || DEFAULT_VERIFY_RULES_TEXT;

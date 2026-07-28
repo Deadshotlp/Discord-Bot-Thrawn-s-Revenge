@@ -53,8 +53,8 @@ export async function handleVoiceJoinWaitingRoom({ client, newState, oldState })
     return;
   }
 
-  const { moduleConfigStore, logger, env } = client.botContext;
-  const config = getSupportConfig(moduleConfigStore, newState.guild.id, env);
+  const { settingsStore, logger, env } = client.botContext;
+  const config = getSupportConfig(settingsStore, newState.guild.id, env);
 
   if (!config.waitingChannelId || !config.managementChannelId) {
     return;
@@ -191,8 +191,8 @@ export async function handleVoiceDisconnectWaitingRoom({ client, oldState, newSt
     return;
   }
 
-  const { moduleConfigStore, env } = client.botContext;
-  const config = getSupportConfig(moduleConfigStore, oldState.guild.id, env);
+  const { settingsStore, env } = client.botContext;
+  const config = getSupportConfig(settingsStore, oldState.guild.id, env);
 
   if (!config.waitingChannelId || oldState.channelId !== config.waitingChannelId) {
     return;

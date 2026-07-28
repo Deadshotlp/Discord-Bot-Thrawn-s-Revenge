@@ -48,8 +48,8 @@ function normalizeTalkChannelPrefix(prefix) {
 }
 
 export async function ensureSupportDefaults(client, guild) {
-  const { moduleConfigStore, env, logger } = client.botContext;
-  const supportState = moduleConfigStore.getModuleState(guild.id, "support");
+  const { settingsStore, env, logger } = client.botContext;
+  const supportState = settingsStore.getModuleState(guild.id, "support");
 
   if (!supportState || !supportState.enabled) {
     return supportState;
@@ -192,7 +192,7 @@ export async function ensureSupportDefaults(client, guild) {
     transcriptTextChannelId: currentConfig.transcriptTextChannelId || updates.managementChannelId || currentConfig.managementChannelId || ""
   };
 
-  moduleConfigStore.setModuleConfig(guild.id, "support", nextConfig);
+  settingsStore.setModuleConfig(guild.id, "support", nextConfig);
 
   if (managementChannel) {
     const me = guild.members.me || (await guild.members.fetchMe().catch(() => null));
@@ -206,5 +206,5 @@ export async function ensureSupportDefaults(client, guild) {
     }
   }
 
-  return moduleConfigStore.getModuleState(guild.id, "support");
+  return settingsStore.getModuleState(guild.id, "support");
 }

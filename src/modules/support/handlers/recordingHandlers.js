@@ -139,7 +139,7 @@ export async function handleRecordingStopInteraction({ client, interaction, case
   }).catch(() => null);
 
   const caseData = getSupportCase(interaction.guildId, caseId);
-  const config = getSupportConfig(client.botContext.moduleConfigStore, interaction.guildId, client.botContext.env);
+  const config = getSupportConfig(client.botContext.settingsStore, interaction.guildId, client.botContext.env);
 
   const posted = await finalizeVoiceTranscript(client, interaction.guild, caseData || { id: caseId }, config);
 
