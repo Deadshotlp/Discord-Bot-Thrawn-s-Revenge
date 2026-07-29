@@ -19,7 +19,7 @@ async function handleVerifyInteraction({ client, interaction }) {
     return;
   }
 
-  const verifyState = client.botContext.moduleConfigStore.getModuleState(interaction.guildId, "verify");
+  const verifyState = client.botContext.settingsStore.getModuleState(interaction.guildId, "verify");
   const roleId = verifyState?.config?.roleId || "";
 
   if (!roleId) {
@@ -64,7 +64,7 @@ async function handleVerifyInteraction({ client, interaction }) {
 }
 
 async function handleVerifyGuildCreate({ client, guild }) {
-  if (!client.botContext.moduleConfigStore.isModuleEnabled(guild.id, "verify")) {
+  if (!client.botContext.settingsStore.isModuleEnabled(guild.id, "verify")) {
     return;
   }
 
@@ -73,7 +73,7 @@ async function handleVerifyGuildCreate({ client, guild }) {
 
 async function handleVerifyReady({ client }) {
   for (const guild of client.guilds.cache.values()) {
-    if (!client.botContext.moduleConfigStore.isModuleEnabled(guild.id, "verify")) {
+    if (!client.botContext.settingsStore.isModuleEnabled(guild.id, "verify")) {
       continue;
     }
 

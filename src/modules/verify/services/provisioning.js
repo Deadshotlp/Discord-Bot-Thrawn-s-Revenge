@@ -57,8 +57,8 @@ async function createDefaultChannel(guild, channelName, logger) {
 }
 
 export async function ensureVerifyDefaults(client, guild) {
-  const { moduleConfigStore, env, logger } = client.botContext;
-  const verifyState = moduleConfigStore.getModuleState(guild.id, "verify");
+  const { settingsStore, env, logger } = client.botContext;
+  const verifyState = settingsStore.getModuleState(guild.id, "verify");
 
   if (!verifyState || !verifyState.enabled) {
     return verifyState;
@@ -108,6 +108,6 @@ export async function ensureVerifyDefaults(client, guild) {
     }
   }
 
-  moduleConfigStore.setModuleConfig(guild.id, "verify", nextConfig);
-  return moduleConfigStore.getModuleState(guild.id, "verify");
+  settingsStore.setModuleConfig(guild.id, "verify", nextConfig);
+  return settingsStore.getModuleState(guild.id, "verify");
 }

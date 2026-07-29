@@ -78,7 +78,7 @@ export function buildWeeklyReportMessages(weekKey, departments, reports) {
 }
 
 export async function publishWeeklyReport(client, guild, weekKey, departments, config) {
-  const { moduleConfigStore, logger } = client.botContext;
+  const { settingsStore, logger } = client.botContext;
 
   const channel = await resolveTextAnnouncementChannel(guild, config.publishChannelId);
   if (!channel) {
@@ -98,7 +98,7 @@ export async function publishWeeklyReport(client, guild, weekKey, departments, c
   }
 
   markWeekPublished(guild.id, weekKey);
-  moduleConfigStore.setModuleConfig(guild.id, "weekly-report", {
+  settingsStore.setModuleConfig(guild.id, "weekly-report", {
     ...config,
     lastPublishedWeek: weekKey
   });
@@ -140,7 +140,7 @@ export function buildReminderMessage(weekKey, missingDepartments, publishMoment)
 }
 
 export async function sendWeeklyReminder(client, guild, weekKey, departments, config, publishMoment) {
-  const { moduleConfigStore, logger } = client.botContext;
+  const { settingsStore, logger } = client.botContext;
 
   const channel = await resolveTextAnnouncementChannel(guild, config.publishChannelId);
   if (!channel) {
@@ -151,7 +151,7 @@ export async function sendWeeklyReminder(client, guild, weekKey, departments, co
   const submittedIds = new Set(reports.map((report) => report.departmentId));
   const missingDepartments = departments.filter((department) => !submittedIds.has(department.id));
 
-  moduleConfigStore.setModuleConfig(guild.id, "weekly-report", {
+  settingsStore.setModuleConfig(guild.id, "weekly-report", {
     ...config,
     lastReminderWeek: weekKey
   });

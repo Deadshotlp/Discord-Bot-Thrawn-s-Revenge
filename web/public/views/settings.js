@@ -1,0 +1,372 @@
+import { ACCESS, api } from "../lib/api.js";
+import {
+  badge,
+  card,
+  clear,
+  confirmDialog,
+  field,
+  h,
+  modal,
+  select,
+  spinner,
+  table,
+  toast
+} from "../lib/ui.js";
+
+// Feldbeschreibungen je Modul. Daraus wird das Formular gebaut –
+// neue Optionen brauchen nur einen Eintrag hier plus den Default im Modul.
+const MODULE_FIELDS = {
+  monitoring: [
+    { key: "statusChannelId", label: "Status-Panel-Channel", type: "channel", hint: "Hier hält der Bot ein Live-Panel aktuell" },
+    { key: "panelIntervalSeconds", label: "Panel-Aktualisierung (Sek.)", type: "number", min: 30, max: 3600 },
+    { key: "chartRange", label: "Diagramm-Zeitraum im Panel", type: "select", options: [
+      { value: "24h", label: "24 Stunden" }, { value: "7d", label: "7 Tage" }, { value: "30d", label: "30 Tage" }
+    ] },
+    { key: "showHourProfile", label: "Tagesprofil im Panel anzeigen", type: "bool" },
+    { key: "alertOnStateChange", label: "Bei Online-/Offline-Wechsel benachrichtigen", type: "bool" },
+    { key: "alertChannelId", label: "Benachrichtigungs-Channel", type: "channel", hint: "Leer = Status-Panel-Channel" },
+    { key: "alertRoleId", label: "Ping-Rolle bei Ausfall", type: "role" }
+  ],
+  absence: [
+    { key: "announceChannelId", label: "Ankündigungs-Channel", type: "channel" },
+    { key: "overviewChannelId", label: "Übersichts-Channel", type: "channel", hint: "Dauerhaft aktualisierte Wer-ist-weg-Nachricht" },
+    { key: "overviewDays", label: "Vorschau in Tagen", type: "number", min: 7, max: 120 },
+    { key: "maxDays", label: "Maximale Abwesenheitsdauer (Tage)", type: "number", min: 1, max: 365 },
+    { key: "requireApproval", label: "Freigabe durch Bereichsleitung nötig", type: "bool" },
+    { key: "allowSelfService", label: "Mitglieder dürfen sich selbst abmelden", type: "bool" },
+    { key: "notifyRoleIds", label: "Ping-Rollen bei neuer Abmeldung", type: "roles" }
+  ],
+  support: [
+    { key: "waitingChannelId", label: "Support-Warteraum (Voice)", type: "voice" },
+    { key: "managementChannelId", label: "Verwaltungs-Channel", type: "channel" },
+    { key: "transcriptTextChannelId", label: "Transkript-Channel", type: "channel" },
+    { key: "talkCategoryId", label: "Kategorie Support-Talks", type: "category" },
+    { key: "ticketCategoryId", label: "Kategorie Tickets", type: "category" }
+  ],
+  verify: [
+    { key: "roleId", label: "Verify-Rolle", type: "role" },
+    { key: "channelId", label: "Verify-Channel", type: "channel" },
+    { key: "rulesText", label: "Regeltext", type: "textarea" }
+  ],
+  updates: [
+    { key: "updatesChannelId", label: "Updates-Channel", type: "channel" },
+    { key: "changelogPingRoleId", label: "Ping-Rolle für Changelogs", type: "role" },
+    { key: "changelogNote", label: "Hinweistext unter Changelogs", type: "textarea" }
+  ],
+  "weekly-report": [
+    { key: "publishChannelId", label: "Veröffentlichungs-Channel", type: "channel" },
+    { key: "publishWeekday", label: "Wochentag", type: "select", options: [
+      "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"
+    ].map((label, index) => ({ value: index + 1, label })) },
+    { key: "publishHour", label: "Stunde", type: "number", min: 0, max: 23 },
+    { key: "publishMinute", label: "Minute", type: "number", min: 0, max: 59 },
+    { key: "reminderHoursBefore", label: "Erinnerung (Std. vorher, 0 = aus)", type: "number", min: 0, max: 168 }
+  ],
+  "steam-link": [
+    { key: "ingameCommand", label: "Chat-Befehl im Spiel", type: "text", hint: "Standard: !discord" },
+    { key: "linkedRoleId", label: "Rolle für verknüpfte Mitglieder", type: "role" },
+    { key: "announceChannelId", label: "Channel für Verknüpfungs-Meldungen", type: "channel" },
+    { key: "trackPlaytime", label: "Spielzeit erfassen", type: "bool" }
+  ],
+  meeting: [],
+  "reaction-role": [],
+  "content-creator": [],
+  system: [],
+  dashboard: []
+};
+
+function channelOptions(channels) {
+  return [
+    { value: "", label: "– nicht gesetzt –" },
+    ...channels.map((channel) => ({
+      value: channel.id,
+      label: channel.parent ? `${channel.parent} / ${channel.name}` : channel.name
+    }))
+  ];
+}
+
+function roleOptions(roles) {
+  return [{ value: "", label: "– nicht gesetzt –" }, ...roles.map((role) => ({ value: role.id, label: role.name }))];
+}
+
+function buildControl(guild, spec, value) {
+  switch (spec.type) {
+    case "channel":
+      return select(channelOptions(guild.channels.text), { name: spec.key, value: value || "" });
+    case "voice":
+      return select(channelOptions(guild.channels.voice), { name: spec.key, value: value || "" });
+    case "category":
+      return select(channelOptions(guild.channels.category), { name: spec.key, value: value || "" });
+    case "role":
+      return select(roleOptions(guild.roles), { name: spec.key, value: value || "" });
+    case "roles": {
+      const chosen = new Set(Array.isArray(value) ? value : []);
+      return h("div", { style: { maxHeight: "160px", overflowY: "auto", display: "grid", gap: "4px" } },
+        ...guild.roles.slice(0, 100).map((role) =>
+          h("label.switch", { style: { fontSize: "13px" } },
+            h("input", {
+              type: "checkbox", name: spec.key, value: role.id, checked: chosen.has(role.id),
+              style: { width: "16px", height: "16px", appearance: "auto" }
+            }),
+            role.name)));
+    }
+    case "bool":
+      return h("label.switch", {},
+        h("input", { type: "checkbox", name: spec.key, checked: Boolean(value) }),
+        h("span.muted", { style: { fontSize: "13px" } }, "aktiviert"));
+    case "number":
+      return h("input.input", { name: spec.key, type: "number", min: spec.min, max: spec.max, value: value ?? "" });
+    case "select":
+      return select(spec.options, { name: spec.key, value: value ?? "" });
+    case "textarea":
+      return h("textarea.input", { name: spec.key, value: value ?? "" });
+    default:
+      return h("input.input", { name: spec.key, value: value ?? "" });
+  }
+}
+
+function readValue(form, spec) {
+  if (spec.type === "bool") {
+    return form.querySelector(`[name="${spec.key}"]`).checked;
+  }
+
+  if (spec.type === "roles") {
+    return [...form.querySelectorAll(`input[name="${spec.key}"]:checked`)].map((input) => input.value);
+  }
+
+  const element = form.querySelector(`[name="${spec.key}"]`);
+  if (!element) {
+    return undefined;
+  }
+
+  if (spec.type === "number") {
+    return element.value === "" ? undefined : Number(element.value);
+  }
+
+  return element.value;
+}
+
+function moduleCard(guildId, guild, moduleInfo, refresh) {
+  const isAdmin = guild.accessLevel >= ACCESS.ADMIN;
+  const fields = MODULE_FIELDS[moduleInfo.name] || [];
+
+  const form = h("form.stack", {
+    onSubmit: async (event) => {
+      event.preventDefault();
+
+      const config = {};
+      for (const spec of fields) {
+        const value = readValue(form, spec);
+        if (value !== undefined) {
+          config[spec.key] = value;
+        }
+      }
+
+      try {
+        await api.updateModule(guildId, moduleInfo.name, { config });
+        toast(`${moduleInfo.label} gespeichert.`, "success");
+        await refresh();
+      } catch (error) {
+        toast(error.message, "error");
+      }
+    }
+  },
+  ...fields.map((spec) => field(spec.label, buildControl(guild, spec, moduleInfo.config[spec.key]), spec.hint)),
+  fields.length > 0 && isAdmin
+    ? h("div.row", {}, h("button.btn.btn-primary.btn-sm", { type: "submit" }, "Speichern"))
+    : null);
+
+  if (!isAdmin) {
+    for (const control of form.querySelectorAll("input, select, textarea")) {
+      control.disabled = true;
+    }
+  }
+
+  return card(
+    h("div.row-between", { style: { width: "100%" } },
+      h("span", {}, moduleInfo.label, " ",
+        moduleInfo.enabled ? badge("aktiv", "success") : badge("aus", "neutral")),
+      isAdmin
+        ? h("label.switch", {},
+          h("input", {
+            type: "checkbox",
+            checked: moduleInfo.enabled,
+            onChange: async (event) => {
+              await api.updateModule(guildId, moduleInfo.name, { enabled: event.target.checked });
+              toast(`${moduleInfo.label} ${event.target.checked ? "aktiviert" : "deaktiviert"}.`, "success");
+              await refresh();
+            }
+          }))
+        : null),
+
+    moduleInfo.description ? h("p.muted", { style: { fontSize: "13px" } }, moduleInfo.description) : null,
+    moduleInfo.commands.length > 0
+      ? h("p.muted", { style: { fontSize: "12px" } }, "Befehle: ",
+        ...moduleInfo.commands.map((name) => h("code", { style: { marginRight: "6px" } }, `/${name}`)))
+      : null,
+    fields.length > 0 ? form : null);
+}
+
+function departmentsCard(guildId, guild, departments, refresh) {
+  const isAdmin = guild.accessLevel >= ACCESS.ADMIN;
+
+  const departmentForm = (values = {}) => h("div", {},
+    field("Name", h("input.input", { name: "name", required: true, value: values.name || "" })),
+    field("Mitglieder-Rollen", buildControl(guild, { key: "roleIds", type: "roles" }, values.roleIds),
+      "Wer diese Rollen hat, darf Tickets des Departments bearbeiten"),
+    field("Leitungs-Rollen", buildControl(guild, { key: "leadRoleIds", type: "roles" }, values.leadRoleIds),
+      "Leitung darf Wochenberichte abgeben, Abmeldungen freigeben und Statistiken sehen"));
+
+  const readDepartment = (data, form) => ({
+    name: data.name,
+    roleIds: [...form.querySelectorAll('input[name="roleIds"]:checked')].map((input) => input.value),
+    leadRoleIds: [...form.querySelectorAll('input[name="leadRoleIds"]:checked')].map((input) => input.value)
+  });
+
+  return card(
+    h("div.row-between", { style: { width: "100%" } },
+      h("span", {}, "Departments"),
+      isAdmin
+        ? h("button.btn.btn-sm.btn-primary", {
+          onClick: () => modal("Department anlegen", departmentForm(), {
+            submitLabel: "Anlegen",
+            onSubmit: async (data, form) => {
+              await api.createDepartment(guildId, readDepartment(data, form));
+              toast("Department angelegt.", "success");
+              await refresh();
+            }
+          })
+        }, "+ Department")
+        : null),
+
+    h("p.muted", { style: { fontSize: "13px" } },
+      "Departments strukturieren Tickets, Wochenberichte und Abmeldungen gleichermaßen."),
+
+    table(["Name", "ID", "Mitglieder-Rollen", "Leitungs-Rollen", ""],
+      departments.map((department) => [
+        h("strong", {}, department.name),
+        h("span.mono", { style: { fontSize: "12px" } }, department.id),
+        department.roleIds.map((id) => guild.roles.find((role) => role.id === id)?.name || id).join(", ") || "–",
+        department.leadRoleIds.map((id) => guild.roles.find((role) => role.id === id)?.name || id).join(", ") || "–",
+        isAdmin
+          ? h("div.row", {},
+            h("button.btn.btn-sm", {
+              onClick: () => modal(`${department.name} bearbeiten`, departmentForm(department), {
+                onSubmit: async (data, form) => {
+                  await api.updateDepartment(guildId, department.id, readDepartment(data, form));
+                  toast("Gespeichert.", "success");
+                  await refresh();
+                }
+              })
+            }, "Bearbeiten"),
+            h("button.btn.btn-sm.btn-danger", {
+              onClick: async () => {
+                if (!confirmDialog(`Department „${department.name}“ löschen?`)) {
+                  return;
+                }
+
+                await api.deleteDepartment(guildId, department.id);
+                await refresh();
+              }
+            }, "Löschen"))
+          : "–"
+      ]),
+      { empty: "Noch keine Departments angelegt." }));
+}
+
+function creatorsCard(guildId, guild, creators, refresh) {
+  const isAdmin = guild.accessLevel >= ACCESS.ADMIN;
+
+  const form = h("form.stack", {
+    onSubmit: async (event) => {
+      event.preventDefault();
+      const data = Object.fromEntries(new FormData(form).entries());
+
+      const parseLines = (text) => String(text || "")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [profile, ...rest] = line.split("|");
+          return { profile: profile.trim(), announceTemplate: rest.join("|").trim() };
+        });
+
+      try {
+        const result = await api.post(`/api/guilds/${guildId}/creators`, {
+          notifyChannelId: data.notifyChannelId,
+          youtubeRoleId: data.youtubeRoleId,
+          twitchRoleId: data.twitchRoleId,
+          youtubeChannels: parseLines(data.youtube),
+          twitchChannels: parseLines(data.twitch)
+        });
+
+        toast(result.warnings.length > 0 ? result.warnings.join(" ") : "Gespeichert.",
+          result.warnings.length > 0 ? "error" : "success");
+        await refresh();
+      } catch (error) {
+        toast(error.message, "error");
+      }
+    }
+  },
+  field("Ankündigungs-Channel", select(channelOptions(guild.channels.text), {
+    name: "notifyChannelId", value: creators.notifyChannelId
+  })),
+  h("div.field-row", {},
+    field("YouTube Ping-Rolle", select(roleOptions(guild.roles), { name: "youtubeRoleId", value: creators.youtubeRoleId })),
+    field("Twitch Ping-Rolle", select(roleOptions(guild.roles), { name: "twitchRoleId", value: creators.twitchRoleId }))),
+  field(`YouTube-Kanäle${creators.youtubeReady ? "" : " (YOUTUBE_API_KEY fehlt)"}`,
+    h("textarea.input", {
+      name: "youtube",
+      value: creators.youtubeChannels.map((entry) =>
+        `${entry.channelId}${entry.announceTemplate ? ` | ${entry.announceTemplate}` : ""}`).join("\n")
+    }),
+    "Eine Zeile je Kanal: Kanal-ID, @handle oder Link. Optional „| Ankündigungstext“."),
+  field(`Twitch-Kanäle${creators.twitchReady ? "" : " (TWITCH_CLIENT_ID/SECRET fehlt)"}`,
+    h("textarea.input", {
+      name: "twitch",
+      value: creators.twitchChannels.map((entry) =>
+        `${entry.login}${entry.announceTemplate ? ` | ${entry.announceTemplate}` : ""}`).join("\n")
+    }),
+    "Eine Zeile je Streamer-Login. Optional „| Ankündigungstext“."),
+  isAdmin ? h("div.row", {}, h("button.btn.btn-primary.btn-sm", { type: "submit" }, "Speichern")) : null);
+
+  if (!isAdmin) {
+    for (const control of form.querySelectorAll("input, select, textarea")) {
+      control.disabled = true;
+    }
+  }
+
+  return card("Content-Creator-Benachrichtigungen", form);
+}
+
+export async function renderSettings({ guildId, guild }) {
+  const container = h("div.stack");
+
+  async function refresh() {
+    clear(container).append(spinner());
+
+    const [modules, departments, creators] = await Promise.all([
+      api.modules(guildId),
+      api.departments(guildId),
+      api.get(`/api/guilds/${guildId}/creators`).catch(() => null)
+    ]);
+
+    clear(container).append(
+      h("div.page-header", {},
+        h("h1", {}, "Einstellungen"),
+        guild.accessLevel < ACCESS.ADMIN
+          ? h("span.muted", {}, "Nur Lesezugriff – Änderungen benötigen „Server verwalten“.")
+          : null),
+
+      departmentsCard(guildId, guild, departments, refresh),
+
+      h("div.grid.grid-2", {}, ...modules
+        .filter((moduleInfo) => moduleInfo.name !== "dashboard" && moduleInfo.name !== "system")
+        .map((moduleInfo) => moduleCard(guildId, guild, moduleInfo, refresh))),
+
+      creators ? creatorsCard(guildId, guild, creators, refresh) : null);
+  }
+
+  await refresh();
+  return container;
+}

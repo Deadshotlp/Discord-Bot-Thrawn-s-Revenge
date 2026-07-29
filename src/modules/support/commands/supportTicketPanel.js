@@ -36,7 +36,7 @@ export const supportTicketPanelCommand = {
       return;
     }
 
-    const supportState = client.botContext.moduleConfigStore.getModuleState(interaction.guildId, "support");
+    const supportState = client.botContext.settingsStore.getModuleState(interaction.guildId, "support");
     const currentConfig = supportState?.config || {};
 
     const departments = ensureDefaultDepartment(
@@ -47,7 +47,7 @@ export const supportTicketPanelCommand = {
 
     const defaultDepartmentId = ensureValidDefaultDepartmentId(departments, currentConfig.defaultDepartmentId);
 
-    client.botContext.moduleConfigStore.setModuleConfig(interaction.guildId, "support", {
+    client.botContext.settingsStore.setModuleConfig(interaction.guildId, "support", {
       ...currentConfig,
       departments,
       defaultDepartmentId

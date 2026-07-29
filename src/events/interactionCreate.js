@@ -7,7 +7,7 @@ export async function handleInteractionCreate(client, interaction) {
     modules,
     commandRegistry,
     commandToModule,
-    moduleConfigStore
+    settingsStore
   } = client.botContext;
 
   if (interaction.isAutocomplete()) {
@@ -22,9 +22,8 @@ export async function handleInteractionCreate(client, interaction) {
     if (
       interaction.inGuild()
       && moduleName
-      && moduleName !== "setup"
       && !command.alwaysAvailable
-      && !moduleConfigStore.isModuleEnabled(interaction.guildId, moduleName)
+      && !settingsStore.isModuleEnabled(interaction.guildId, moduleName)
     ) {
       await interaction.respond([]).catch(() => null);
       return;
@@ -61,9 +60,8 @@ export async function handleInteractionCreate(client, interaction) {
     if (
       interaction.inGuild()
       && moduleName
-      && moduleName !== "setup"
       && !command.alwaysAvailable
-      && !moduleConfigStore.isModuleEnabled(interaction.guildId, moduleName)
+      && !settingsStore.isModuleEnabled(interaction.guildId, moduleName)
     ) {
       await interaction.reply({
         content: `Das Modul ${moduleName} ist aktuell deaktiviert.`,

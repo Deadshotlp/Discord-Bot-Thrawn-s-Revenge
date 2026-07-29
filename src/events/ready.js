@@ -1,7 +1,8 @@
 import { runEventHandlers } from "../core/moduleRuntime.js";
+import { startWebServer } from "../web/server.js";
 
 export async function handleReady(client) {
-  const { logger, commandPayload, modules, moduleConfigStore } = client.botContext;
+  const { logger, commandPayload, modules, settingsStore } = client.botContext;
 
   logger.info(`Bot ist online als ${client.user.tag}`);
 
@@ -20,7 +21,7 @@ export async function handleReady(client) {
   }
 
   for (const guild of client.guilds.cache.values()) {
-    moduleConfigStore.ensureGuild(guild.id);
+    settingsStore.ensureGuild(guild.id);
 
     try {
       await guild.commands.set(commandPayload);
@@ -37,4 +38,7 @@ export async function handleReady(client) {
   }
 
   await runEventHandlers(modules, "ready", { client }, logger);
+
+  // Das Dashboard braucht den fertig verbundenen Client (Rollen, Channels, Member).
+  client.botContext.webServer = startWebServer(client);
 }

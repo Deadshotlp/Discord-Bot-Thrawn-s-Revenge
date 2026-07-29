@@ -5,7 +5,7 @@ import { changelogCommand, CHANGELOG_MODAL_ID, CHANGELOG_NOTES_MAX_LENGTH, canPo
 import { buildChangelogEmbed, formatChangelogDate } from "./services/embeds.js";
 import { startUpdatesPolling } from "./services/poll.js";
 
-function nextChangelogSequence(moduleConfigStore, guildId, state, date, category) {
+function nextChangelogSequence(settingsStore, guildId, state, date, category) {
   const dateKey = formatChangelogDate(date);
   const categoryKey = category.trim().toLowerCase();
   const sequences = state?.config?.changelogSequence && typeof state.config.changelogSequence === "object"
@@ -14,7 +14,7 @@ function nextChangelogSequence(moduleConfigStore, guildId, state, date, category
   const previous = sequences[categoryKey];
   const sequence = previous?.dateKey === dateKey ? previous.count + 1 : 1;
 
-  moduleConfigStore.setModuleConfig(guildId, "updates", {
+  settingsStore.setModuleConfig(guildId, "updates", {
     ...(state?.config || {}),
     changelogSequence: {
       ...sequences,
@@ -34,8 +34,8 @@ async function handleChangelogModalSubmit({ client, interaction }) {
     return;
   }
 
-  const { moduleConfigStore } = client.botContext;
-  const state = moduleConfigStore.getModuleState(interaction.guildId, "updates");
+  const { settingsStore } = client.botContext;
+  const state = settingsStore.getModuleState(interaction.guildId, "updates");
 
   if (!canPostChangelog(interaction.member, state?.config)) {
     await interaction.reply({
@@ -70,7 +70,7 @@ async function handleChangelogModalSubmit({ client, interaction }) {
   const notes = interaction.fields.getTextInputValue("changelog_notes").trim().slice(0, CHANGELOG_NOTES_MAX_LENGTH);
 
   const date = new Date();
-  const sequence = nextChangelogSequence(moduleConfigStore, interaction.guildId, state, date, category);
+  const sequence = nextChangelogSequence(settingsStore, interaction.guildId, state, date, category);
 
   const embed = buildChangelogEmbed({
     category,

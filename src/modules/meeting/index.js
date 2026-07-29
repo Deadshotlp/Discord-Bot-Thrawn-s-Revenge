@@ -29,9 +29,7 @@ import {
   saveMeetingEvaluation,
   setMeetingAttendance
 } from "./services/store.js";
-import { handleMeetingAdminInteraction } from "./handlers/meetingAdminHandlers.js";
 import { meetingCommand } from "./commands/meeting.js";
-import { meetingAdminCommand } from "./commands/meetingAdmin.js";
 
 const CHECK_INTERVAL_MS = 60 * 1000;
 const EVALUATION_DELAY_MS = 5 * 60 * 1000;
@@ -40,7 +38,7 @@ const EVALUATION_WINDOW_MS = 15 * 60 * 1000;
 const runtime = { timer: null, running: false };
 
 function getMeetings(client, guildId) {
-  const state = client.botContext.moduleConfigStore.getModuleState(guildId, "meeting");
+  const state = client.botContext.settingsStore.getModuleState(guildId, "meeting");
   return normalizeMeetingModuleConfig(state?.config).meetings;
 }
 
@@ -48,7 +46,7 @@ function patchMeeting(client, guildId, meetingId, patch) {
   const meetings = getMeetings(client, guildId).map((meeting) => (
     meeting.id === meetingId ? { ...meeting, ...patch } : meeting
   ));
-  client.botContext.moduleConfigStore.setModuleConfig(guildId, "meeting", { meetings });
+  client.botContext.settingsStore.setModuleConfig(guildId, "meeting", { meetings });
 }
 
 function readAttendanceLists(guildId, meetingId, occurrenceKey) {
@@ -177,7 +175,7 @@ async function runMeetingCycle(client) {
   try {
     const now = new Date();
     for (const guild of client.guilds.cache.values()) {
-      if (!client.botContext.moduleConfigStore.isModuleEnabled(guild.id, "meeting")) {
+      if (!client.botContext.settingsStore.isModuleEnabled(guild.id, "meeting")) {
         continue;
       }
 
@@ -292,10 +290,6 @@ async function handleMeetingInteraction({ client, interaction }) {
     return;
   }
 
-  const handledByAdmin = await handleMeetingAdminInteraction({ client, interaction });
-  if (handledByAdmin) {
-    return;
-  }
 
   if (interaction.isButton() && interaction.customId.startsWith(MEETING_REGISTER_PREFIX)) {
     await handleAttendanceButton({
@@ -340,7 +334,9 @@ export const meetingModule = {
   defaultConfig: {
     meetings: []
   },
-  commands: [meetingCommand, meetingAdminCommand],
+  label: "Meetings",
+  description: "Wiederkehrende Team-Meetings mit Agenda, An-/Abmeldung und Anwesenheitsauswertung.",
+  commands: [meetingCommand],
   events: {
     ready: [handleMeetingReady],
     interactionCreate: [handleMeetingInteraction],

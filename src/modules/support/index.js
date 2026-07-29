@@ -1,5 +1,4 @@
 import { supportDepartmentCommand } from "./commands/supportDepartment.js";
-import { supportDepartmentUiCommand } from "./commands/supportDepartmentUi.js";
 import { supportTicketPanelCommand } from "./commands/supportTicketPanel.js";
 import { closeSupportCasesDb } from "./services/cases.js";
 import { closeSupportTicketsDb } from "./services/tickets.js";
@@ -37,7 +36,6 @@ import {
   handleTicketOpenButtonInteraction,
   handleTicketOpenModalInteraction
 } from "./handlers/ticketInteractionHandlers.js";
-import { handleDepartmentUiInteraction } from "./handlers/departmentUiHandlers.js";
 import {
   SUPPORT_RECORD_CONSENT_PREFIX,
   SUPPORT_RECORD_STOP_PREFIX,
@@ -48,11 +46,6 @@ import { cleanupVoiceTmpDir, stopAllRecordingSessions } from "./services/voiceRe
 
 async function handleSupportInteraction({ client, interaction }) {
   if (!interaction.inGuild()) {
-    return;
-  }
-
-  const handledByDepartmentUi = await handleDepartmentUiInteraction({ client, interaction });
-  if (handledByDepartmentUi) {
     return;
   }
 
@@ -135,7 +128,7 @@ async function handleSupportInteraction({ client, interaction }) {
 }
 
 async function handleSupportGuildCreate({ client, guild }) {
-  if (!client.botContext.moduleConfigStore.isModuleEnabled(guild.id, "support")) {
+  if (!client.botContext.settingsStore.isModuleEnabled(guild.id, "support")) {
     return;
   }
 
@@ -151,7 +144,7 @@ async function handleSupportReady({ client }) {
   for (const guild of client.guilds.cache.values()) {
     scheduleClosedTicketDeletionsForGuild(client, guild.id);
 
-    if (!client.botContext.moduleConfigStore.isModuleEnabled(guild.id, "support")) {
+    if (!client.botContext.settingsStore.isModuleEnabled(guild.id, "support")) {
       continue;
     }
 
@@ -181,9 +174,10 @@ export const supportModule = {
     defaultDepartmentId: "default",
     departments: []
   },
+  label: "Support & Tickets",
+  description: "Ticket-System, Sprach-Support mit Fallverwaltung und Departments.",
   commands: [
     supportDepartmentCommand,
-    supportDepartmentUiCommand,
     supportTicketPanelCommand
   ],
   events: {

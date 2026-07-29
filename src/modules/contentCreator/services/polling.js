@@ -200,7 +200,7 @@ function buildTwitchMessage(source, stream, roleId = "") {
 
 export async function runContentCreatorPollCycle(client, options = {}) {
   const { guildId = "", reason = "interval" } = options;
-  const { moduleConfigStore, env, logger } = client.botContext;
+  const { settingsStore, env, logger } = client.botContext;
 
   const guilds = guildId
     ? [client.guilds.cache.get(guildId)].filter(Boolean)
@@ -211,12 +211,12 @@ export async function runContentCreatorPollCycle(client, options = {}) {
   let errors = 0;
 
   for (const guild of guilds) {
-    if (!moduleConfigStore.isModuleEnabled(guild.id, "content-creator")) {
+    if (!settingsStore.isModuleEnabled(guild.id, "content-creator")) {
       continue;
     }
 
     checkedGuilds += 1;
-    const moduleState = moduleConfigStore.getModuleState(guild.id, "content-creator");
+    const moduleState = settingsStore.getModuleState(guild.id, "content-creator");
     const config = normalizeContentCreatorConfig(moduleState?.config);
 
     if (!config.notifyChannelId) {
@@ -324,7 +324,7 @@ export async function runContentCreatorPollCycle(client, options = {}) {
     }
 
     if (changed) {
-      moduleConfigStore.setModuleConfig(guild.id, "content-creator", config);
+      settingsStore.setModuleConfig(guild.id, "content-creator", config);
     }
   }
 

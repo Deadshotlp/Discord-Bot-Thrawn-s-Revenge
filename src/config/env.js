@@ -27,22 +27,35 @@ function getRequiredEnv(name) {
   return value;
 }
 
+const webPort = parseInteger(process.env.WEB_PORT, 8080);
+const webBaseUrl = String(process.env.WEB_BASE_URL || `http://localhost:${webPort}`).replace(/\/+$/, "");
+
 export const env = {
   discordToken: getRequiredEnv("DISCORD_TOKEN"),
   logLevel: process.env.LOG_LEVEL || "info",
+
+  // Web-Dashboard
+  webEnabled: parseBoolean(process.env.WEB_ENABLED, true),
+  webPort,
+  webHost: process.env.WEB_HOST || "0.0.0.0",
+  webBaseUrl,
+  discordClientId: process.env.DISCORD_CLIENT_ID || "",
+  discordClientSecret: process.env.DISCORD_CLIENT_SECRET || "",
+
+  // Content-Creator-Benachrichtigungen
   youtubeApiKey: process.env.YOUTUBE_API_KEY || "",
   twitchClientId: process.env.TWITCH_CLIENT_ID || "",
   twitchClientSecret: process.env.TWITCH_CLIENT_SECRET || "",
+  creatorPollIntervalSeconds: parseInteger(process.env.CREATOR_POLL_INTERVAL_SECONDS, 180),
+
+  // Sprach-Transkripte
   whisperBinaryPath: process.env.WHISPER_BINARY_PATH || "",
   whisperModelPath: process.env.WHISPER_MODEL_PATH || "",
   whisperLibDir: process.env.WHISPER_LIB_DIR || "",
   whisperThreads: parseInteger(process.env.WHISPER_THREADS, 2),
   whisperLanguage: process.env.WHISPER_LANGUAGE || "de",
-  creatorPollIntervalSeconds: parseInteger(process.env.CREATOR_POLL_INTERVAL_SECONDS, 180),
-  serverStatusPollIntervalSeconds: parseInteger(process.env.SERVER_STATUS_POLL_INTERVAL_SECONDS, 300),
-  setupChannelName: process.env.SETUP_CHANNEL_NAME || "bot-setup",
-  verifyDefaultRoleName: process.env.VERIFY_DEFAULT_ROLE_NAME || "Verifiziert",
-  verifyDefaultChannelName: process.env.VERIFY_DEFAULT_CHANNEL_NAME || "verify",
+
+  // Support-Grundeinstellungen (nur als Startwerte beim ersten Setup)
   supportWaitingChannelName: process.env.SUPPORT_WAITING_CHANNEL_NAME || "support-warteraum",
   supportManagementChannelName: process.env.SUPPORT_MANAGEMENT_CHANNEL_NAME || "support-verwaltung",
   supportTalkCategoryName: process.env.SUPPORT_TALK_CATEGORY_NAME || "Support Talk",
@@ -52,10 +65,10 @@ export const env = {
   supportDefaultDepartmentName: process.env.SUPPORT_DEFAULT_DEPARTMENT_NAME || "Support",
   supportDefaultDepartmentRoleIdsRaw: process.env.SUPPORT_DEFAULT_DEPARTMENT_ROLE_IDS || "",
   supportDefaultDepartmentRoleIds: parseSnowflakeList(process.env.SUPPORT_DEFAULT_DEPARTMENT_ROLE_IDS || ""),
+
+  verifyDefaultRoleName: process.env.VERIFY_DEFAULT_ROLE_NAME || "Verifiziert",
+  verifyDefaultChannelName: process.env.VERIFY_DEFAULT_CHANNEL_NAME || "verify",
+
   githubToken: process.env.GITHUB_TOKEN || "",
-  updatesPollIntervalMinutes: parseInteger(process.env.UPDATES_POLL_INTERVAL_MINUTES, 15),
-  autoSetupChannelOnGuildJoin: parseBoolean(
-    process.env.AUTO_SETUP_CHANNEL_ON_GUILD_JOIN ?? process.env.FORCE_SETUP_ON_GUILD_JOIN,
-    true
-  )
+  updatesPollIntervalMinutes: parseInteger(process.env.UPDATES_POLL_INTERVAL_MINUTES, 15)
 };

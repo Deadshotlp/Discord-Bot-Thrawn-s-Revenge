@@ -27,8 +27,8 @@ import { finalizeVoiceTranscript } from "../services/voiceTranscript.js";
 import { getRecordingSession } from "../services/voiceRecording.js";
 
 export async function handleClaimInteraction({ client, interaction, caseId }) {
-  const { moduleConfigStore, env } = client.botContext;
-  const config = getSupportConfig(moduleConfigStore, interaction.guildId, env);
+  const { settingsStore, env } = client.botContext;
+  const config = getSupportConfig(settingsStore, interaction.guildId, env);
   const caseData = getSupportCase(interaction.guildId, caseId);
 
   if (!caseData || caseData.status !== "open") {
@@ -119,7 +119,7 @@ export async function handleEscalateInteraction({ client, interaction, caseId })
     return;
   }
 
-  const config = getSupportConfig(client.botContext.moduleConfigStore, interaction.guildId, client.botContext.env);
+  const config = getSupportConfig(client.botContext.settingsStore, interaction.guildId, client.botContext.env);
   const currentDepartment = getDepartmentById(config.departments, caseData.departmentId);
 
   if (!canEscalateCase(interaction, currentDepartment)) {
@@ -157,7 +157,7 @@ export async function handleEscalationSelectInteraction({ client, interaction, c
     return;
   }
 
-  const config = getSupportConfig(client.botContext.moduleConfigStore, interaction.guildId, client.botContext.env);
+  const config = getSupportConfig(client.botContext.settingsStore, interaction.guildId, client.botContext.env);
   const currentDepartment = getDepartmentById(config.departments, caseData.departmentId);
 
   if (!canEscalateCase(interaction, currentDepartment)) {
@@ -227,7 +227,7 @@ export async function handleCloseInteraction({ client, interaction, caseId }) {
     return;
   }
 
-  const config = getSupportConfig(client.botContext.moduleConfigStore, interaction.guildId, client.botContext.env);
+  const config = getSupportConfig(client.botContext.settingsStore, interaction.guildId, client.botContext.env);
   const hasRecording = Boolean(getRecordingSession(interaction.guildId, caseId));
   let transcriptPosted = false;
 
@@ -284,7 +284,7 @@ export async function handleTranscriptInteraction({ client, interaction, caseId 
   }
 
   addSupportCaseAction(interaction.guildId, caseId, `Transkript angefordert von ${interaction.user.id}`);
-  const config = getSupportConfig(client.botContext.moduleConfigStore, interaction.guildId, client.botContext.env);
+  const config = getSupportConfig(client.botContext.settingsStore, interaction.guildId, client.botContext.env);
   const department = getDepartmentById(config.departments, caseData.departmentId);
   const transcriptContent = buildCaseTranscript(caseData, department?.name || "");
 

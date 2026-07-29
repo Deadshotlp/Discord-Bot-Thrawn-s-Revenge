@@ -3,7 +3,7 @@ import globals from "globals";
 
 export default [
   {
-    ignores: ["node_modules/", "data/"]
+    ignores: ["node_modules/", "data/", "addons/"]
   },
   js.configs.recommended,
   {
@@ -22,6 +22,15 @@ export default [
       "no-console": "off",
       "eqeqeq": ["error", "smart"],
       "prefer-const": "error"
+    }
+  },
+  {
+    // Das Dashboard läuft ohne Build-Schritt direkt im Browser.
+    files: ["web/public/**/*.js"],
+    languageOptions: {
+      globals: {
+        ...globals.browser
+      }
     }
   }
 ];

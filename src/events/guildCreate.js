@@ -5,7 +5,7 @@ export async function handleGuildCreate(client, guild) {
     logger,
     modules,
     commandPayload,
-    moduleConfigStore
+    settingsStore
   } = client.botContext;
 
   logger.info("Bot ist neuem Server beigetreten", {
@@ -13,7 +13,7 @@ export async function handleGuildCreate(client, guild) {
     guildName: guild.name
   });
 
-  moduleConfigStore.ensureGuild(guild.id);
+  settingsStore.ensureGuild(guild.id);
 
   try {
     await guild.commands.set(commandPayload);

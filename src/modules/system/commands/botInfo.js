@@ -18,11 +18,11 @@ export const botInfoCommand = {
     const {
       modules,
       commandRegistry,
-      moduleConfigStore
+      settingsStore
     } = client.botContext;
 
     const guildConfig = interaction.inGuild()
-      ? moduleConfigStore.getGuildConfig(interaction.guildId)
+      ? settingsStore.getGuildConfig(interaction.guildId)
       : null;
 
     const moduleStateText = guildConfig

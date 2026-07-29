@@ -64,8 +64,8 @@ export async function resolveExistingRoleIds(guild, roleIds) {
   return [...new Set(validRoleIds)];
 }
 
-export function getSupportConfig(moduleConfigStore, guildId, env) {
-  const supportState = moduleConfigStore.getModuleState(guildId, "support");
+export function getSupportConfig(settingsStore, guildId, env) {
+  const supportState = settingsStore.getModuleState(guildId, "support");
   const currentConfig = supportState?.config || {};
 
   const departments = ensureDefaultDepartment(

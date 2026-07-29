@@ -1,22 +1,10 @@
 import { MessageFlags } from "discord.js";
-import { extractSnowflake, resolveTextAnnouncementChannel } from "../../core/discordUtil.js";
 import { canManageServer } from "../../core/permissions.js";
 import { getDepartmentById, isDepartmentLead } from "../support/services/config.js";
 import {
-  normalizeWeeklyReportConfig,
-  parseTimeInput,
-  parseWeekdayInput
-} from "./services/config.js";
-import {
   buildWeeklyReportSubmitModal,
-  describeWeeklyReportConfig,
   WEEKLY_REPORT_CONTENT_INPUT_ID,
   WEEKLY_REPORT_DEPT_SELECT_ID,
-  WEEKLY_REPORT_SETUP_CHANNEL_INPUT_ID,
-  WEEKLY_REPORT_SETUP_MODAL_ID,
-  WEEKLY_REPORT_SETUP_REMINDER_INPUT_ID,
-  WEEKLY_REPORT_SETUP_TIME_INPUT_ID,
-  WEEKLY_REPORT_SETUP_WEEKDAY_INPUT_ID,
   WEEKLY_REPORT_SUBMIT_MODAL_PREFIX
 } from "./services/panel.js";
 import { publishWeeklyReport, sendWeeklyReminder } from "./services/publisher.js";
@@ -93,7 +81,7 @@ async function runWeeklyReportCycle(client) {
   try {
     const now = new Date();
     for (const guild of client.guilds.cache.values()) {
-      if (!client.botContext.moduleConfigStore.isModuleEnabled(guild.id, "weekly-report")) {
+      if (!client.botContext.settingsStore.isModuleEnabled(guild.id, "weekly-report")) {
         continue;
       }
 
@@ -135,85 +123,6 @@ async function handleWeeklyReportShutdown() {
 }
 
 handleWeeklyReportShutdown.alwaysAvailable = true;
-
-async function handleSetupModalSubmit({ client, interaction }) {
-  if (!canManageServer(interaction.member)) {
-    await interaction.reply({
-      content: "Nur Admins oder Mitglieder mit Server-verwalten dürfen dies konfigurieren.",
-      flags: MessageFlags.Ephemeral
-    });
-    return;
-  }
-
-  const channelInput = interaction.fields.getTextInputValue(WEEKLY_REPORT_SETUP_CHANNEL_INPUT_ID)?.trim() || "";
-  const weekdayInput = interaction.fields.getTextInputValue(WEEKLY_REPORT_SETUP_WEEKDAY_INPUT_ID)?.trim() || "";
-  const timeInput = interaction.fields.getTextInputValue(WEEKLY_REPORT_SETUP_TIME_INPUT_ID)?.trim() || "";
-  const reminderInput = interaction.fields.getTextInputValue(WEEKLY_REPORT_SETUP_REMINDER_INPUT_ID)?.trim() || "";
-
-  const currentConfig = getWeeklyReportConfig(client, interaction.guildId);
-
-  let publishChannelId = "";
-  if (channelInput) {
-    const channelId = extractSnowflake(channelInput);
-    const channel = await resolveTextAnnouncementChannel(interaction.guild, channelId);
-    if (!channel) {
-      await interaction.reply({
-        content: "Veröffentlichungs-Channel ist ungültig. Bitte ID oder #Erwähnung eines Textkanals nutzen.",
-        flags: MessageFlags.Ephemeral
-      });
-      return;
-    }
-
-    publishChannelId = channel.id;
-  }
-
-  const publishWeekday = weekdayInput ? parseWeekdayInput(weekdayInput) : currentConfig.publishWeekday;
-  if (!publishWeekday) {
-    await interaction.reply({
-      content: "Ungültiger Wochentag. Bitte 1-7 oder z. B. \"Sonntag\" angeben.",
-      flags: MessageFlags.Ephemeral
-    });
-    return;
-  }
-
-  const time = timeInput
-    ? parseTimeInput(timeInput)
-    : { hour: currentConfig.publishHour, minute: currentConfig.publishMinute };
-  if (!time) {
-    await interaction.reply({
-      content: "Ungültige Uhrzeit. Bitte im Format HH:MM angeben.",
-      flags: MessageFlags.Ephemeral
-    });
-    return;
-  }
-
-  const reminderHoursBefore = reminderInput === ""
-    ? currentConfig.reminderHoursBefore
-    : Number.parseInt(reminderInput, 10);
-  if (!Number.isInteger(reminderHoursBefore) || reminderHoursBefore < 0 || reminderHoursBefore > 168) {
-    await interaction.reply({
-      content: "Ungültige Erinnerungszeit. Bitte 0 (aus) bis 168 Stunden angeben.",
-      flags: MessageFlags.Ephemeral
-    });
-    return;
-  }
-
-  const nextConfig = normalizeWeeklyReportConfig({
-    ...currentConfig,
-    publishChannelId,
-    publishWeekday,
-    publishHour: time.hour,
-    publishMinute: time.minute,
-    reminderHoursBefore
-  });
-
-  client.botContext.moduleConfigStore.setModuleConfig(interaction.guildId, "weekly-report", nextConfig);
-
-  await interaction.reply({
-    content: `Wochenbericht-Konfiguration gespeichert.\n${describeWeeklyReportConfig(nextConfig)}`,
-    flags: MessageFlags.Ephemeral
-  });
-}
 
 async function handleDepartmentSelect({ client, interaction }) {
   const departments = getSubmittableDepartments(client, interaction.guildId, interaction.member);
@@ -292,11 +201,6 @@ async function handleSubmitModal({ client, interaction }) {
 
 async function handleWeeklyReportInteraction({ client, interaction }) {
   if (!interaction.inGuild()) {
-    return;
-  }
-
-  if (interaction.isModalSubmit() && interaction.customId === WEEKLY_REPORT_SETUP_MODAL_ID) {
-    await handleSetupModalSubmit({ client, interaction });
     return;
   }
 

@@ -1,6 +1,7 @@
 import path from "node:path";
 import Database from "better-sqlite3";
 import { ensureDataDir } from "../../../core/dataDir.js";
+import { STAFF_EVENT_KINDS, recordStaffEvent } from "../../../core/staffEvents.js";
 
 const dbFilePath = path.join(ensureDataDir(), "support-tickets.db");
 
@@ -187,6 +188,71 @@ export function getOpenTicketByUser(guildId, userId) {
   return toTicketData(selectOpenTicketByUserStmt.get(guildId, userId));
 }
 
+const selectAllTicketsStmt = db.prepare(`
+  SELECT *
+  FROM support_tickets
+  WHERE guild_id = ?
+  ORDER BY created_at DESC
+`);
+
+const ticketStatsStmt = db.prepare(`
+  SELECT
+    COUNT(*) AS total,
+    SUM(CASE WHEN status = 'open' THEN 1 ELSE 0 END) AS open,
+    SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END) AS closed,
+    AVG(CASE WHEN closed_at IS NOT NULL THEN closed_at - created_at END) AS avg_duration
+  FROM support_tickets
+  WHERE guild_id = ? AND created_at >= ?
+`);
+
+const ticketsPerDayStmt = db.prepare(`
+  SELECT
+    strftime('%Y-%m-%d', created_at / 1000, 'unixepoch', 'localtime') AS day,
+    COUNT(*) AS total
+  FROM support_tickets
+  WHERE guild_id = ? AND created_at >= ?
+  GROUP BY day
+  ORDER BY day ASC
+`);
+
+const ticketsPerDepartmentStmt = db.prepare(`
+  SELECT department_id, COUNT(*) AS total
+  FROM support_tickets
+  WHERE guild_id = ? AND created_at >= ?
+  GROUP BY department_id
+  ORDER BY total DESC
+`);
+
+// Für das Web-Dashboard: alle Tickets eines Servers, optional gefiltert.
+export function listSupportTickets(guildId, { status = "", departmentId = "", userId = "", limit = 500 } = {}) {
+  return selectAllTicketsStmt
+    .all(guildId)
+    .map((row) => toTicketData(row))
+    .filter((ticket) => (!status || ticket.status === status)
+      && (!departmentId || ticket.departmentId === departmentId)
+      && (!userId || ticket.userId === userId))
+    .slice(0, limit);
+}
+
+export function getSupportTicketStats(guildId, sinceTimestamp = 0) {
+  const totals = ticketStatsStmt.get(guildId, sinceTimestamp) || {};
+
+  return {
+    total: Number(totals.total || 0),
+    open: Number(totals.open || 0),
+    closed: Number(totals.closed || 0),
+    averageDurationMs: Math.round(Number(totals.avg_duration || 0)),
+    perDay: ticketsPerDayStmt.all(guildId, sinceTimestamp).map((row) => ({
+      day: row.day,
+      total: Number(row.total || 0)
+    })),
+    perDepartment: ticketsPerDepartmentStmt.all(guildId, sinceTimestamp).map((row) => ({
+      departmentId: row.department_id,
+      total: Number(row.total || 0)
+    }))
+  };
+}
+
 export function listClosedSupportTickets(guildId) {
   return selectClosedTicketsByGuildStmt
     .all(guildId)
@@ -210,7 +276,21 @@ const closeTicketTransaction = db.transaction((guildId, ticketId, closedById) =>
 });
 
 export function closeSupportTicket(guildId, ticketId, closedById) {
-  return toTicketData(closeTicketTransaction(guildId, ticketId, closedById));
+  const ticket = toTicketData(closeTicketTransaction(guildId, ticketId, closedById));
+
+  // Grundlage der Team-Statistik: wer hat welches Ticket bearbeitet.
+  if (ticket && closedById) {
+    recordStaffEvent({
+      guildId,
+      userId: closedById,
+      kind: STAFF_EVENT_KINDS.ticketClosed,
+      refId: ticket.id,
+      departmentId: ticket.departmentId,
+      meta: { durationMs: (ticket.closedAt || 0) - ticket.createdAt }
+    });
+  }
+
+  return ticket;
 }
 
 const escalateTicketTransaction = db.transaction((guildId, ticketId, departmentId) => {
@@ -232,8 +312,21 @@ const escalateTicketTransaction = db.transaction((guildId, ticketId, departmentI
   return selectTicketByIdStmt.get(guildId, ticketId);
 });
 
-export function escalateSupportTicket(guildId, ticketId, departmentId) {
-  return toTicketData(escalateTicketTransaction(guildId, ticketId, departmentId));
+export function escalateSupportTicket(guildId, ticketId, departmentId, escalatedById = "") {
+  const ticket = toTicketData(escalateTicketTransaction(guildId, ticketId, departmentId));
+
+  if (ticket && escalatedById) {
+    recordStaffEvent({
+      guildId,
+      userId: escalatedById,
+      kind: STAFF_EVENT_KINDS.ticketEscalated,
+      refId: ticket.id,
+      departmentId: ticket.departmentId,
+      unique: false
+    });
+  }
+
+  return ticket;
 }
 
 export function closeSupportTicketsDb() {

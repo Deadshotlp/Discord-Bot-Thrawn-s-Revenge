@@ -14,7 +14,7 @@ import {
 } from "../services/store.js";
 
 export function getMeetingModuleConfig(client, guildId) {
-  const state = client.botContext.moduleConfigStore.getModuleState(guildId, "meeting");
+  const state = client.botContext.settingsStore.getModuleState(guildId, "meeting");
   return normalizeMeetingModuleConfig(state?.config);
 }
 

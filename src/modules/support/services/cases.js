@@ -1,6 +1,7 @@
 import path from "node:path";
 import Database from "better-sqlite3";
 import { ensureDataDir } from "../../../core/dataDir.js";
+import { STAFF_EVENT_KINDS, recordStaffEvent } from "../../../core/staffEvents.js";
 
 const dbFilePath = path.join(ensureDataDir(), "support-cases.db");
 
@@ -235,7 +236,20 @@ const claimCaseTransaction = db.transaction((guildId, caseId, supporterId, talkC
 
 export function claimSupportCase(guildId, caseId, supporterId, talkChannelId) {
   const row = claimCaseTransaction(guildId, caseId, supporterId, talkChannelId);
-  return toCaseData(row);
+  const caseData = toCaseData(row);
+
+  if (caseData && supporterId) {
+    recordStaffEvent({
+      guildId,
+      userId: supporterId,
+      kind: STAFF_EVENT_KINDS.caseClaimed,
+      refId: caseData.id,
+      departmentId: caseData.departmentId,
+      meta: { waitMs: (caseData.claimedAt || 0) - caseData.createdAt }
+    });
+  }
+
+  return caseData;
 }
 
 const escalateCaseTransaction = db.transaction((guildId, caseId, departmentId, escalatedById) => {
@@ -259,7 +273,20 @@ const escalateCaseTransaction = db.transaction((guildId, caseId, departmentId, e
 
 export function escalateSupportCase(guildId, caseId, departmentId, escalatedById) {
   const row = escalateCaseTransaction(guildId, caseId, departmentId, escalatedById);
-  return toCaseData(row);
+  const caseData = toCaseData(row);
+
+  if (caseData && escalatedById) {
+    recordStaffEvent({
+      guildId,
+      userId: escalatedById,
+      kind: STAFF_EVENT_KINDS.caseEscalated,
+      refId: caseData.id,
+      departmentId: caseData.departmentId,
+      unique: false
+    });
+  }
+
+  return caseData;
 }
 
 const closeCaseTransaction = db.transaction((guildId, caseId, closedById) => {
@@ -281,7 +308,22 @@ const closeCaseTransaction = db.transaction((guildId, caseId, closedById) => {
 
 export function closeSupportCase(guildId, caseId, closedById) {
   const row = closeCaseTransaction(guildId, caseId, closedById);
-  return toCaseData(row);
+  const caseData = toCaseData(row);
+
+  if (caseData && closedById) {
+    recordStaffEvent({
+      guildId,
+      userId: closedById,
+      kind: STAFF_EVENT_KINDS.caseClosed,
+      refId: caseData.id,
+      departmentId: caseData.departmentId,
+      meta: {
+        durationMs: caseData.claimedAt ? (caseData.closedAt || 0) - caseData.claimedAt : undefined
+      }
+    });
+  }
+
+  return caseData;
 }
 
 const appendActionTransaction = db.transaction((guildId, caseId, text) => {
@@ -298,6 +340,44 @@ const appendActionTransaction = db.transaction((guildId, caseId, text) => {
 export function addSupportCaseAction(guildId, caseId, text) {
   const row = appendActionTransaction(guildId, caseId, text);
   return toCaseData(row);
+}
+
+const selectAllCasesStmt = db.prepare(`
+  SELECT *
+  FROM support_cases
+  WHERE guild_id = ?
+  ORDER BY created_at DESC
+`);
+
+const caseStatsStmt = db.prepare(`
+  SELECT
+    COUNT(*) AS total,
+    SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END) AS closed,
+    AVG(CASE WHEN claimed_at IS NOT NULL THEN claimed_at - created_at END) AS avg_claim_wait,
+    AVG(CASE WHEN closed_at IS NOT NULL AND claimed_at IS NOT NULL THEN closed_at - claimed_at END) AS avg_handling
+  FROM support_cases
+  WHERE guild_id = ? AND created_at >= ?
+`);
+
+// Für das Web-Dashboard: alle Sprach-Fälle eines Servers.
+export function listSupportCases(guildId, { status = "", departmentId = "", limit = 500 } = {}) {
+  return selectAllCasesStmt
+    .all(guildId)
+    .map((row) => toCaseData(row))
+    .filter((entry) => (!status || entry.status === status)
+      && (!departmentId || entry.departmentId === departmentId))
+    .slice(0, limit);
+}
+
+export function getSupportCaseStats(guildId, sinceTimestamp = 0) {
+  const totals = caseStatsStmt.get(guildId, sinceTimestamp) || {};
+
+  return {
+    total: Number(totals.total || 0),
+    closed: Number(totals.closed || 0),
+    averageClaimWaitMs: Math.round(Number(totals.avg_claim_wait || 0)),
+    averageHandlingMs: Math.round(Number(totals.avg_handling || 0))
+  };
 }
 
 export function closeSupportCasesDb() {

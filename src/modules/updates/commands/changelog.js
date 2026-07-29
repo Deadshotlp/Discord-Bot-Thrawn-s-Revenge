@@ -22,8 +22,8 @@ export const changelogCommand = {
     .setDescription("Postet manuell einen Changelog-Eintrag im konfigurierten Updates-Kanal."),
 
   async execute({ client, interaction }) {
-    const { moduleConfigStore } = client.botContext;
-    const state = moduleConfigStore.getModuleState(interaction.guildId, "updates");
+    const { settingsStore } = client.botContext;
+    const state = settingsStore.getModuleState(interaction.guildId, "updates");
 
     if (!canPostChangelog(interaction.member, state?.config)) {
       await interaction.reply({
