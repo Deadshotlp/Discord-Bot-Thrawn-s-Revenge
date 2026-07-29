@@ -155,12 +155,20 @@ async function render() {
   }
 
   if (!state.guild || state.guild.id !== route.guildId) {
+    // Name, Icon und Zugriffsstufe stehen schon aus /api/auth/me bereit, damit
+    // die Hülle gezeichnet werden kann, während die Detaildaten laden.
+    state.guild = { ...guildMeta, channels: { text: [], voice: [], category: [] }, roles: [] };
     renderShell(root, spinner("Server wird geladen …"));
+
     try {
-      state.guild = await api.guild(route.guildId);
-      state.guild.accessLevel = guildMeta.accessLevel;
-      state.guild.leadDepartments = guildMeta.leadDepartments;
+      const detail = await api.guild(route.guildId);
+      state.guild = {
+        ...detail,
+        accessLevel: guildMeta.accessLevel,
+        leadDepartments: guildMeta.leadDepartments
+      };
     } catch (error) {
+      state.guild = null;
       toast(error.message, "error");
       window.location.hash = "";
       return;
