@@ -1,6 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from "discord.js";
 import { DAY_MS, getSeries } from "./history.js";
-import { buildHourProfileChartUrl, buildPlayerHistoryChartUrl } from "./chart.js";
+import { MAX_IMAGE_URL_LENGTH, buildHourProfileChartUrl, buildPlayerHistoryChartUrl } from "./chart.js";
 import { buildServerSummary } from "./stats.js";
 
 const RANGE_PRESETS = {
@@ -11,6 +11,15 @@ const RANGE_PRESETS = {
 
 export function resolveRange(rangeKey) {
   return RANGE_PRESETS[rangeKey] || RANGE_PRESETS["24h"];
+}
+
+/**
+ * Letzte Sicherung: Discord lehnt die gesamte Nachricht ab, wenn eine
+ * Bild-URL zu lang ist. Lieber ein Embed ohne Diagramm als ein Panel, das
+ * gar nicht mehr aktualisiert werden kann.
+ */
+function usableImageUrl(url) {
+  return url && url.length <= MAX_IMAGE_URL_LENGTH ? url : "";
 }
 
 function progressBar(percent, size = 12) {
@@ -151,10 +160,10 @@ export function buildServerEmbed(server, { chartRange = "24h", withChart = true,
       resolution: range.resolution
     });
 
-    const chartUrl = buildPlayerHistoryChartUrl(series.points, {
+    const chartUrl = usableImageUrl(buildPlayerHistoryChartUrl(series.points, {
       color: server.color,
       title: `Spielerverlauf · ${range.label}`
-    });
+    }));
 
     if (chartUrl) {
       embed.setImage(chartUrl);
@@ -165,10 +174,10 @@ export function buildServerEmbed(server, { chartRange = "24h", withChart = true,
 }
 
 export function buildHourProfileEmbed(server, summary) {
-  const url = buildHourProfileChartUrl(summary.hourProfile, {
+  const url = usableImageUrl(buildHourProfileChartUrl(summary.hourProfile, {
     color: server.color,
     title: `${server.name} · Aktivität nach Uhrzeit (14 Tage)`
-  });
+  }));
 
   if (!url) {
     return null;
