@@ -327,20 +327,33 @@ export const serverCommand = {
       const servers = listServers(interaction.guildId).filter((server) => server.enabled);
       const now = Date.now();
 
-      const series = servers.map((server) => ({
-        name: server.name,
-        color: server.color,
-        points: getSeries(server.id, { from: now - range.ms, to: now, resolution: range.resolution }).points
-      }));
+      const series = servers
+        .map((server) => ({
+          name: server.name,
+          color: server.color,
+          points: getSeries(server.id, { from: now - range.ms, to: now, resolution: range.resolution }).points
+        }))
+        // Die belebtesten Server zuerst: mehr als MAX_COMPARISON_SERIES Linien
+        // passen nicht ins Diagramm, also sollen die relevanten übrig bleiben.
+        .sort((a, b) => Number(b.points.at(-1)?.players || 0) - Number(a.points.at(-1)?.players || 0));
 
-      const url = buildMultiServerChartUrl(series, { title: `Serververgleich · ${range.label}` });
+      const { url, shown } = buildMultiServerChartUrl(series, { title: `Serververgleich · ${range.label}` });
       if (!url) {
         await interaction.editReply("Noch nicht genug Messdaten für einen Vergleich.");
         return;
       }
 
+      const omitted = series.length - shown;
+
       await interaction.editReply({
-        embeds: [{ title: `Serververgleich · ${range.label}`, color: 0x5865f2, image: { url } }]
+        embeds: [{
+          title: `Serververgleich · ${range.label}`,
+          color: 0x5865f2,
+          image: { url },
+          ...(omitted > 0
+            ? { footer: { text: `${omitted} weitere Server nicht dargestellt – gezeigt werden die ${shown} belebtesten.` } }
+            : {})
+        }]
       });
       return;
     }
