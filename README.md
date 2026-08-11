@@ -80,6 +80,11 @@ echten Rollen auf dem Server:
 Seiten: Übersicht, Server-Monitoring, Tickets, Team-Statistiken, Abmeldungen,
 Meetings, Steam & Spielzeit, Einstellungen, Protokoll.
 
+Auf der Ticket-Seite lässt sich jedes Ticket öffnen: Der Nachrichtenverlauf des
+Discord-Channels wird angezeigt und alle 15 Sekunden nachgeladen. Antworten
+gehen als Bot-Embed mit dem Namen des Teammitglieds in den Ticket-Channel;
+Schließen und Department-Wechsel verhalten sich wie die Buttons in Discord.
+
 Das Frontend besteht aus reinen ES-Modulen ohne Build-Schritt – es gibt nichts zu
 kompilieren, `npm install` genügt. Hinter einem Reverse Proxy sollte
 `WEB_BASE_URL` auf die externe HTTPS-Adresse zeigen; Session-Cookies werden dann
@@ -188,7 +193,9 @@ Befehle: `/meeting anmelden|abmelden|thema|status`
 - Abgabe mit `/wochenbericht abgeben` (Modal, Markdown, bis 3900 Zeichen).
 - Veröffentlichung zum konfigurierten Termin: Kopfzeile mit Kalenderwoche plus
   ein Embed je Department; fehlende Abgaben werden markiert.
-- Optionale Erinnerung an die Leitungs-Rollen der Departments ohne Abgabe.
+- Optionale Erinnerung an die Leitungs-Rollen der Departments ohne Abgabe. Der
+  Erinnerungs-Channel lässt sich getrennt vom Veröffentlichungs-Channel setzen;
+  bleibt er leer, wird der Veröffentlichungs-Channel genutzt.
 - Verpasste Termine (Bot offline) werden beim nächsten Start nachgeholt.
 
 ## Updates & Content-Creator
