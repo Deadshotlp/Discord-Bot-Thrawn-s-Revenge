@@ -55,6 +55,24 @@ https://bot.deadshot-development.de/api/auth/callback
 Danach den Server im Panel neu starten. In der Konsole muss stehen:
 `Web-Dashboard läuft`.
 
+### Zeitzone
+
+Container laufen ohne gesetztes `TZ` auf UTC. Terminlogik und Tagesstatistiken
+rechnen mit der Prozess-Zeitzone – ein auf 16:00 gestelltes Meeting würde in
+Discord sonst als 18:00 erscheinen (Sommerzeit, UTC+2).
+
+Der Bot setzt seine Zeitzone deshalb selbst und nutzt ohne Angabe
+`Europe/Berlin`. Abweichend einstellbar über:
+
+```dotenv
+BOT_TIMEZONE=Europe/Berlin
+```
+
+Beim Start protokolliert der Bot die verwendete Zone, z. B.
+`Zeitzone gesetzt {"timezone":"Europe/Berlin","quelle":"Standard"}`. Steht dort
+etwas anderes als erwartet, setzt die Container-Umgebung ein eigenes `TZ` –
+`BOT_TIMEZONE` hat Vorrang davor.
+
 ---
 
 ## 3. nginx-Site anlegen
