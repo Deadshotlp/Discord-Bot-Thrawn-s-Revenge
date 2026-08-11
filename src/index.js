@@ -1,3 +1,7 @@
+// Muss vor allem anderen laufen: setzt process.env.TZ, bevor irgendein Modul
+// mit lokalen Zeiten rechnet.
+import { timezoneInfo } from "./config/timezone.js";
+
 import {
   Client,
   GatewayIntentBits,
@@ -14,6 +18,16 @@ import { registerEvents } from "./events/registerEvents.js";
 import { modules } from "./modules/index.js";
 
 const logger = createLogger(env.logLevel);
+
+if (timezoneInfo.warning) {
+  logger.warn(timezoneInfo.warning);
+}
+
+logger.info("Zeitzone gesetzt", {
+  timezone: timezoneInfo.timezone,
+  quelle: timezoneInfo.source
+});
+
 const settingsStore = new SettingsStore(modules, logger);
 const scheduler = new Scheduler(logger);
 const { commandRegistry, commandPayload, commandToModule } = buildCommandRegistry(modules);
