@@ -141,6 +141,48 @@ export function registerGuildRoutes(router, { client }) {
     sendJson(ctx.res, 201, department);
   });
 
+  // Reihenfolge der Departments. Sie gilt überall gleich – Tickets,
+  // Wochenberichte, Abmeldungen und Teamliste lesen dieselbe Liste.
+  router.post("/api/guilds/:guildId/departments/order", (ctx) => {
+    requireLevel(ctx.access, ACCESS_LEVELS.admin);
+
+    const { settingsStore } = client.botContext;
+    const config = settingsStore.getModuleState(ctx.params.guildId, "support")?.config || {};
+    const departments = normalizeDepartments(config.departments);
+
+    const wanted = Array.isArray(ctx.body.ids) ? ctx.body.ids.map(String) : [];
+    if (wanted.length === 0) {
+      throw new HttpError(400, "Keine Reihenfolge übergeben");
+    }
+
+    const byId = new Map(departments.map((department) => [department.id, department]));
+    const ordered = [];
+
+    for (const id of wanted) {
+      const department = byId.get(id);
+      if (department) {
+        ordered.push(department);
+        byId.delete(id);
+      }
+    }
+
+    // Nicht genannte Departments hängen hinten an, damit ein veralteter
+    // Client keine Einträge verschwinden lässt.
+    ordered.push(...byId.values());
+
+    settingsStore.setModuleConfig(ctx.params.guildId, "support", { departments: ordered });
+
+    recordAudit({
+      guildId: ctx.params.guildId,
+      actorId: ctx.session.discordId,
+      actorName: ctx.session.username,
+      action: "department.reorder",
+      detail: { order: ordered.map((department) => department.id) }
+    });
+
+    sendJson(ctx.res, 200, ordered);
+  });
+
   router.patch("/api/guilds/:guildId/departments/:departmentId", (ctx) => {
     requireLevel(ctx.access, ACCESS_LEVELS.admin);
 

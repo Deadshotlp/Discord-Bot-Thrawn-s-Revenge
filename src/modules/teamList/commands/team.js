@@ -2,7 +2,7 @@ import { MessageFlags, SlashCommandBuilder } from "discord.js";
 import { canManageServer, hasAnyRole } from "../../../core/permissions.js";
 import { getDepartments } from "../../absence/services/departments.js";
 import { MemberIntentError, collectRoster } from "../services/roster.js";
-import { buildRosterEmbed } from "../services/render.js";
+import { buildRosterEmbeds } from "../services/render.js";
 
 function isLeadAnywhere(member, departments) {
   return departments.some((department) => hasAnyRole(member, department.leadRoleIds || []));
@@ -83,7 +83,7 @@ export const teamCommand = {
     }
 
     await interaction.editReply({
-      embeds: [buildRosterEmbed(roster, { guildName: interaction.guild?.name || "", departmentId })]
+      embeds: buildRosterEmbeds(roster, { guildName: interaction.guild?.name || "", departmentId })
     });
   }
 };

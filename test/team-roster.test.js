@@ -165,25 +165,32 @@ test("die Zeile zeigt Leitung und Abmeldung an", () => {
 
 test("zu lange Felder werden mit Hinweis gekürzt statt abgewiesen", () => {
   const lines = Array.from({ length: 200 }, (_, index) => `• <@${index}> Mitglied Nummer ${index}`);
-  const value = joinLines(lines);
+  const value = joinLines(lines, 1024);
 
   assert.ok(value.length <= 1024, `${value.length} Zeichen`);
   assert.match(value, /… und \d+ weitere$/);
 });
 
-// --- Embed-Grenzen ---------------------------------------------------------
+// --- Embed-Aufbau und -Grenzen ---------------------------------------------
 
-const { allocateBudgets, buildRosterEmbed } = await import("../src/modules/teamList/services/render.js");
+const { allocateBudgets, buildRosterEmbeds } = await import("../src/modules/teamList/services/render.js");
 
-// So zählt Discord die Embed-Größe: Titel, Beschreibung, Feldnamen,
-// Feldwerte und Fußzeile zusammen.
-function embedLength(embed) {
-  const json = embed.toJSON();
+// So zählt Discord: Titel, Beschreibung, Feldnamen, Feldwerte und Fußzeile
+// aller Embeds einer Nachricht zusammen.
+function messageLength(embeds) {
+  return embeds.reduce((sum, embed) => {
+    const json = embed.toJSON();
 
-  return (json.title || "").length
-    + (json.description || "").length
-    + (json.footer?.text || "").length
-    + (json.fields || []).reduce((sum, entry) => sum + entry.name.length + entry.value.length, 0);
+    return sum
+      + (json.title || "").length
+      + (json.description || "").length
+      + (json.footer?.text || "").length
+      + (json.fields || []).reduce((inner, entry) => inner + entry.name.length + entry.value.length, 0);
+  }, 0);
+}
+
+function embedFor(embeds, departmentName) {
+  return embeds.find((embed) => embed.toJSON().title === departmentName)?.toJSON();
 }
 
 function bigRoster(departmentCount, perDepartment) {
@@ -217,18 +224,53 @@ function bigRoster(departmentCount, perDepartment) {
   return buildRoster({ members, departments, absences, today: TODAY });
 }
 
-test("das Embed bleibt in Discords Grenzen, auch bei großen Teams", () => {
+test("je Department ein eigenes Embed, dazu eine Kopfzeile", () => {
+  const roster = buildRoster({ members: MEMBERS, departments: DEPARTMENTS, today: TODAY });
+  const embeds = buildRosterEmbeds(roster, { guildName: "Testserver" });
+
+  // Kopf + Support + Technik; "Ohne Rollen" ist unkonfiguriert und entfällt.
+  assert.equal(embeds.length, 3);
+  assert.equal(embeds[0].toJSON().title, "Teamliste · Testserver");
+  assert.deepEqual(embeds.slice(1).map((embed) => embed.toJSON().title), ["Support", "Technik"]);
+});
+
+test("kleine Departments werden vollständig aufgelistet", () => {
+  // Regression: ein Bereich, der wenig Platz braucht und genau so viel
+  // zugeteilt bekommt, wurde fälschlich als "zu viele für die Anzeige"
+  // zusammengefasst.
+  const roster = buildRoster({ members: MEMBERS, departments: DEPARTMENTS, today: TODAY });
+  const technik = embedFor(buildRosterEmbeds(roster, {}), "Technik");
+
+  assert.ok(!technik.description.includes("Zu viele"), technik.description);
+  assert.match(technik.description, /<@3>/);
+  assert.match(technik.description, /<@4>/);
+});
+
+test("auch ein Department mit einer einzigen Person wird aufgelistet", () => {
+  const departments = [{ id: "solo", name: "Entwicklung", roleIds: ["r-dev"], leadRoleIds: ["l-dev"] }];
+  const members = [
+    { id: "9", displayName: "Solo", username: "solo", avatarUrl: "", bot: false, roleIds: ["r-dev", "l-dev"] }
+  ];
+
+  const embed = embedFor(buildRosterEmbeds(buildRoster({ members, departments, today: TODAY }), {}), "Entwicklung");
+
+  assert.match(embed.description, /<@9>/);
+  assert.match(embed.description, /1 Mitglied ·/, "Einzahl statt \"1 Mitglieder\"");
+  assert.ok(!embed.description.includes("Zu viele"));
+});
+
+test("die Nachricht bleibt in Discords Grenzen, auch bei großen Teams", () => {
   for (const [departmentCount, perDepartment] of [[3, 10], [8, 50], [25, 200], [40, 100]]) {
-    const embed = buildRosterEmbed(bigRoster(departmentCount, perDepartment), { guildName: "Testserver" });
-    const json = embed.toJSON();
+    const embeds = buildRosterEmbeds(bigRoster(departmentCount, perDepartment), { guildName: "Testserver" });
     const label = `${departmentCount}×${perDepartment}`;
 
-    assert.ok(json.fields.length <= 25, `${label}: ${json.fields.length} Felder`);
-    assert.ok(embedLength(embed) <= 6000, `${label}: ${embedLength(embed)} Zeichen gesamt`);
+    assert.ok(embeds.length <= 10, `${label}: ${embeds.length} Embeds`);
+    assert.ok(messageLength(embeds) <= 6000, `${label}: ${messageLength(embeds)} Zeichen gesamt`);
 
-    for (const entry of json.fields) {
-      assert.ok(entry.value.length <= 1024, `${label}: Feld "${entry.name}" hat ${entry.value.length} Zeichen`);
-      assert.ok(entry.value.length > 0, `${label}: Feld "${entry.name}" ist leer`);
+    for (const embed of embeds) {
+      const json = embed.toJSON();
+      assert.ok((json.description || "").length <= 4096, `${label}: Beschreibung zu lang`);
+      assert.ok((json.description || "").length > 0, `${label}: leeres Embed`);
     }
   }
 });
@@ -243,8 +285,8 @@ test("das Budget wird fair verteilt, kleine Bereiche verhungern nicht", () => {
 
 test("ein einzelnes Department lässt sich gezielt anzeigen", () => {
   const roster = buildRoster({ members: MEMBERS, departments: DEPARTMENTS, today: TODAY });
-  const json = buildRosterEmbed(roster, { departmentId: "technik" }).toJSON();
+  const embeds = buildRosterEmbeds(roster, { departmentId: "technik" });
 
-  assert.equal(json.fields.length, 1);
-  assert.match(json.fields[0].name, /^Technik/);
+  assert.equal(embeds.length, 2);
+  assert.equal(embeds[1].toJSON().title, "Technik");
 });
