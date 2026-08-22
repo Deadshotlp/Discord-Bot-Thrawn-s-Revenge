@@ -9,6 +9,7 @@ import { monitoringModule } from "./monitoring/index.js";
 import { weeklyReportModule } from "./weeklyReport/index.js";
 import { meetingModule } from "./meeting/index.js";
 import { absenceModule } from "./absence/index.js";
+import { teamListModule } from "./teamList/index.js";
 import { steamLinkModule } from "./steamLink/index.js";
 
 export const modules = [
@@ -23,5 +24,6 @@ export const modules = [
   weeklyReportModule,
   meetingModule,
   absenceModule,
+  teamListModule,
   steamLinkModule
 ];

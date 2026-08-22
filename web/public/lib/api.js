@@ -62,6 +62,8 @@ export const api = {
   cases: (guildId) => request("GET", `/api/guilds/${guildId}/cases`),
   supportStats: (guildId, days) => request("GET", `/api/guilds/${guildId}/stats/support?days=${days}`),
   teamStats: (guildId, days) => request("GET", `/api/guilds/${guildId}/stats/team?days=${days}`),
+  teamRoster: (guildId, { refresh = false } = {}) =>
+    request("GET", `/api/guilds/${guildId}/team/roster${refresh ? "?refresh=1" : ""}`),
 
   absences: (guildId) => request("GET", `/api/guilds/${guildId}/absences`),
   absenceKinds: () => request("GET", "/api/absence-kinds"),

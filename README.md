@@ -11,6 +11,7 @@ mehr, sondern nur noch Befehle für den täglichen Betrieb.
 | **Server-Monitoring** | Beliebig viele Game- und Webserver, feine Abtastraten, Verlaufsdaten, Live-Panel in Discord |
 | **Support** | Ticket-System und Sprach-Support mit Fallverwaltung, Departments, Transkripten |
 | **Team-Abmeldungen** | Abwesenheiten pro Department erfassen, ankündigen und als Übersicht pflegen |
+| **Teamliste** | Wer ist im Team? Nach Departments gruppiert, mit Leitung und aktuellen Abmeldungen |
 | **Steam-Verknüpfung** | SteamID ↔ Discord, daraus Spielzeiterfassung pro Server |
 | **Meetings** | Wiederkehrende Termine mit Agenda, An-/Abmeldung, Anwesenheitsauswertung |
 | **Wochenberichte** | Abgaben je Department, terminierte Veröffentlichung |
@@ -37,7 +38,8 @@ npm run start
 4. Dashboard öffnen (`WEB_BASE_URL`) oder in Discord `/dashboard` ausführen.
 
 Es wird **kein privilegiertes Intent** benötigt. Mitglieder lädt der Bot bei
-Bedarf einzeln per REST nach.
+Bedarf einzeln per REST nach. Einzige Ausnahme ist die [Teamliste](#teamliste) –
+sie braucht die vollständige Mitgliederliste und damit das Server-Members-Intent.
 
 ## Architektur
 
@@ -77,8 +79,8 @@ echten Rollen auf dem Server:
 | **Team** | Mitglied einer Department-Rolle | Tickets und Fälle des eigenen Bereichs |
 | **Mitglied** | sonstige Servermitglieder | eigene Abmeldungen, Meetings, Steam, Serverstatus |
 
-Seiten: Übersicht, Server-Monitoring, Tickets, Team-Statistiken, Abmeldungen,
-Meetings, Steam & Spielzeit, Einstellungen, Protokoll.
+Seiten: Übersicht, Server-Monitoring, Tickets, Teamliste, Team-Statistiken,
+Abmeldungen, Meetings, Steam & Spielzeit, Einstellungen, Protokoll.
 
 Das Frontend besteht aus reinen ES-Modulen ohne Build-Schritt – es gibt nichts zu
 kompilieren, `npm install` genügt. Hinter einem Reverse Proxy sollte
@@ -121,6 +123,29 @@ Befehle: `/server add|list|edit|remove|status|vergleich|top`
 - Im Dashboard gibt es zusätzlich eine Zeitleiste pro Department.
 
 Befehle: `/abmeldung melden|meine|zurueckziehen|liste|freigeben`
+
+## Teamliste
+
+Zeigt, wer aktuell im Team ist – gruppiert nach Departments, mit 👑 für die
+Bereichsleitung und einem Vermerk, wer heute abgemeldet ist.
+
+- Die Zuordnung ergibt sich aus den Rollen der Departments: Bereichsrolle
+  **oder** Leitungsrolle. Wer nur die Leitungsrolle trägt, steht trotzdem im
+  Bereich.
+- Innerhalb eines Departments steht die Leitung oben, danach wird alphabetisch
+  sortiert. Bots und Mitglieder ohne Department-Rolle bleiben außen vor.
+- Abmeldungen kommen aus dem Modul Team-Abmeldungen; angezeigt wird nur, wer
+  **heute** abwesend ist.
+- Im Dashboard gibt es dieselbe Liste unter **Teamliste**, dort mit Avataren.
+
+Befehl: `/team liste [bereich] [oeffentlich]` – öffentlich posten dürfen
+Bereichsleitung und Admins, alle anderen sehen die Liste nur selbst.
+
+> **Voraussetzung:** Das Auflisten aller Mitglieder einer Rolle geht bei Discord
+> nur mit dem privilegierten **Server Members Intent**. Dafür im Developer Portal
+> unter **Bot → Privileged Gateway Intents** den Schalter setzen und in der `.env`
+> `GUILD_MEMBERS_INTENT=true` eintragen, dann den Bot neu starten. Ohne beides
+> startet der Bot zwar normal, `/team liste` meldet aber, dass die Liste fehlt.
 
 ## Steam-Verknüpfung und Spielzeit
 
