@@ -146,6 +146,18 @@ Bereichsleitung und einem Vermerk, wer heute abgemeldet ist.
 Befehl: `/team liste [bereich] [oeffentlich]` – öffentlich posten dürfen
 Bereichsleitung und Admins, alle anderen sehen die Liste nur selbst.
 
+### Dauerhafte Liste im Channel
+
+Ist unter **Einstellungen → Teamliste** ein *Teamlisten-Channel* gesetzt, hält
+der Bot dort eine eigene Nachricht aktuell – ohne den Hinweis „X verwendet
+/team liste" darüber. Sie wird sofort neu gezeichnet, wenn jemand eine
+Department-Rolle bekommt oder verliert, dem Server beitritt oder ihn verlässt.
+Zusätzlich läuft eine Auffrischung im eingestellten Takt (Standard 30 Minuten),
+damit auch beginnende und endende Abmeldungen erscheinen.
+
+Dafür ist das Server-Members-Intent nötig (siehe unten): ohne es bekommt der Bot
+die Rollenänderungen gar nicht mit.
+
 > **Voraussetzung:** Das Auflisten aller Mitglieder einer Rolle geht bei Discord
 > nur mit dem privilegierten **Server Members Intent**. Dafür im Developer Portal
 > unter **Bot → Privileged Gateway Intents** den Schalter setzen und in der `.env`

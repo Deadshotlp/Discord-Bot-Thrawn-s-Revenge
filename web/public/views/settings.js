@@ -36,6 +36,12 @@ const MODULE_FIELDS = {
     { key: "allowSelfService", label: "Mitglieder dürfen sich selbst abmelden", type: "bool" },
     { key: "notifyRoleIds", label: "Ping-Rollen bei neuer Abmeldung", type: "roles" }
   ],
+  teamList: [
+    { key: "panelChannelId", label: "Teamlisten-Channel", type: "channel",
+      hint: "Der Bot hält dort eine Nachricht mit der Teamliste aktuell. Leer = nur der Befehl /team liste" },
+    { key: "refreshMinutes", label: "Auffrischung (Min.)", type: "number", min: 5, max: 1440,
+      hint: "Zusätzlich zu den sofortigen Aktualisierungen bei Rollenänderungen" }
+  ],
   support: [
     { key: "waitingChannelId", label: "Support-Warteraum (Voice)", type: "voice" },
     { key: "managementChannelId", label: "Verwaltungs-Channel", type: "channel" },
