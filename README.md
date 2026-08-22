@@ -117,6 +117,10 @@ Befehle: `/server add|list|edit|remove|status|vergleich|top`
   auch im deutschen Format.
 - Zuordnung zu Departments erfolgt automatisch über die Rollen des Mitglieds
   oder wird explizit gewählt.
+- **Abmelde-Panel:** Ist unter Einstellungen ein *Abmelde-Panel-Channel* gesetzt,
+  stellt der Bot dort eine Nachricht mit den Buttons **Abmelden** und
+  **Meine Abmeldungen** bereit – Art auswählen, Zeitraum im Formular eintragen,
+  fertig. Kein Befehl nötig.
 - Ankündigung im Department-Channel (Fallback: allgemeiner Channel), dazu eine
   laufend aktualisierte Übersicht „wer ist heute weg / wer ist geplant weg“.
 - Optional Freigabepflicht durch die Bereichsleitung.

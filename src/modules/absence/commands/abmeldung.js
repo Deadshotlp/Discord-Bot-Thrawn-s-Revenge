@@ -2,19 +2,17 @@ import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from "discord.js";
 import { canManageServer } from "../../../core/permissions.js";
 import { recordAudit } from "../../../core/audit.js";
 import { normalizeAbsenceConfig } from "../services/config.js";
-import { getDepartmentName, getDepartments, getMemberDepartments } from "../services/departments.js";
+import { getDepartmentName, getDepartments } from "../services/departments.js";
 import { announceAbsence, describeAbsence, formatDate, refreshOverview } from "../services/announce.js";
+import { submitAbsence } from "../services/submit.js";
 import {
   ABSENCE_KINDS,
   ABSENCE_STATUS,
-  createAbsence,
-  daysBetween,
   getAbsence,
   groupByDepartment,
   listUpcomingAbsences,
   listUserAbsences,
   setAbsenceStatus,
-  toIsoDate,
   todayIso
 } from "../services/store.js";
 
@@ -134,70 +132,23 @@ export const abmeldungCommand = {
         return;
       }
 
-      const startsOn = toIsoDate(interaction.options.getString("von", true));
-      const endsOn = toIsoDate(interaction.options.getString("bis") || startsOn);
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-      if (!startsOn || !endsOn) {
-        await interaction.reply({
-          content: "Datum konnte nicht gelesen werden. Nutze z. B. `24.12.2026` oder `2026-12-24`.",
-          flags: MessageFlags.Ephemeral
-        });
-        return;
-      }
-
-      const length = daysBetween(startsOn, endsOn);
-      if (length > config.maxDays) {
-        await interaction.reply({
-          content: `Der Zeitraum ist länger als erlaubt (max. ${config.maxDays} Tage). Bitte an die Leitung wenden.`,
-          flags: MessageFlags.Ephemeral
-        });
-        return;
-      }
-
-      const explicitDepartment = interaction.options.getString("bereich");
-      const departmentIds = explicitDepartment
-        ? [explicitDepartment]
-        : getMemberDepartments(interaction.member, departments).map((department) => department.id);
-
-      let absence;
-      try {
-        absence = createAbsence({
-          guildId: interaction.guildId,
-          userId: interaction.user.id,
-          departmentIds,
-          startsOn,
-          endsOn,
-          kind: interaction.options.getString("art") || "abwesend",
-          reason: interaction.options.getString("grund") || "",
-          status: config.requireApproval ? ABSENCE_STATUS.pending : ABSENCE_STATUS.active,
-          createdBy: interaction.user.id
-        });
-      } catch (error) {
-        await interaction.reply({ content: error.message, flags: MessageFlags.Ephemeral });
-        return;
-      }
-
-      recordAudit({
+      // Anlegen, Prüfen, Ankündigen und Übersicht liegen in submitAbsence,
+      // damit Befehl und Panel dieselben Regeln anwenden.
+      const result = await submitAbsence({
+        client,
         guildId: interaction.guildId,
-        actorId: interaction.user.id,
-        actorName: interaction.user.username,
-        action: "absence.create",
-        detail: { absenceId: absence.id, startsOn, endsOn }
+        member: interaction.member,
+        userId: interaction.user.id,
+        von: interaction.options.getString("von", true),
+        bis: interaction.options.getString("bis") || "",
+        kind: interaction.options.getString("art") || "abwesend",
+        reason: interaction.options.getString("grund") || "",
+        departmentId: interaction.options.getString("bereich") || ""
       });
 
-      await interaction.reply({
-        content: [
-          `Eingetragen: **${formatDate(startsOn)} – ${formatDate(endsOn)}** (${length} ${length === 1 ? "Tag" : "Tage"}).`,
-          departmentIds.length > 0
-            ? `Bereich: ${departmentIds.map((id) => getDepartmentName(departments, id)).join(", ")}`
-            : "Bereich: Allgemein",
-          config.requireApproval ? "Status: wartet auf Freigabe durch die Leitung." : ""
-        ].filter(Boolean).join("\n"),
-        flags: MessageFlags.Ephemeral
-      });
-
-      await announceAbsence(client, absence, { action: "created" });
-      await refreshOverview(client, interaction.guildId);
+      await interaction.editReply({ content: result.text });
       return;
     }
 
