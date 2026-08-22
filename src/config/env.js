@@ -34,6 +34,11 @@ export const env = {
   discordToken: getRequiredEnv("DISCORD_TOKEN"),
   logLevel: process.env.LOG_LEVEL || "info",
 
+  // Privilegiertes Intent, nötig zum Auflisten aller Servermitglieder (Teamliste).
+  // Muss zusätzlich im Discord Developer Portal freigeschaltet sein – sonst
+  // verweigert Discord die Anmeldung mit "Used disallowed intents".
+  guildMembersIntent: parseBoolean(process.env.GUILD_MEMBERS_INTENT, false),
+
   // Web-Dashboard
   webEnabled: parseBoolean(process.env.WEB_ENABLED, true),
   webPort,

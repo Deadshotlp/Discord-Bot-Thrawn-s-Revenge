@@ -198,6 +198,38 @@ textarea.input { min-height: 90px; resize: vertical; }
 .user-cell { display: flex; align-items: center; gap: 8px; }
 .user-cell img { width: 24px; height: 24px; border-radius: 50%; }
 
+/* --- Teamliste ------------------------------------------------------------ */
+
+.roster-summary {
+  display: flex; flex-wrap: wrap; gap: 6px 16px;
+  margin-bottom: 12px; color: var(--text-muted); font-size: 13px;
+}
+.roster-summary-absent { color: #f0585b; }
+
+.roster-list { display: grid; gap: 6px; }
+
+.roster-member {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 10px; border-radius: 8px; background: var(--bg-input);
+}
+
+.roster-avatar { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; }
+.roster-avatar-empty {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--border); color: var(--text-muted); font-size: 13px; font-weight: 600;
+}
+
+.roster-identity { min-width: 0; flex: 1; }
+.roster-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.roster-handle { font-size: 12px; color: var(--text-muted); }
+
+.roster-tags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+
+@media (max-width: 600px) {
+  .roster-member { flex-wrap: wrap; }
+  .roster-tags { justify-content: flex-start; width: 100%; }
+}
+
 /* --- Diagramme ------------------------------------------------------------ */
 
 .chart { position: relative; width: 100%; }

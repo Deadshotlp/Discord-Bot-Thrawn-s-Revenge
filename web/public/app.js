@@ -5,6 +5,7 @@ import { renderOverview } from "./views/overview.js";
 import { renderServers } from "./views/servers.js";
 import { renderTickets } from "./views/tickets.js";
 import { renderTeam } from "./views/team.js";
+import { renderRoster } from "./views/roster.js";
 import { renderAbsences } from "./views/absences.js";
 import { renderMeetings } from "./views/meetings.js";
 import { renderSteam } from "./views/steam.js";
@@ -15,6 +16,7 @@ const PAGES = [
   { id: "overview", label: "Übersicht", icon: "📊", level: ACCESS.MEMBER, render: renderOverview },
   { id: "servers", label: "Server-Monitoring", icon: "🖥️", level: ACCESS.MEMBER, render: renderServers },
   { id: "tickets", label: "Tickets", icon: "🎫", level: ACCESS.STAFF, render: renderTickets },
+  { id: "roster", label: "Teamliste", icon: "👥", level: ACCESS.MEMBER, render: renderRoster },
   { id: "team", label: "Team-Statistiken", icon: "🏅", level: ACCESS.LEAD, render: renderTeam },
   { id: "absences", label: "Abmeldungen", icon: "🌴", level: ACCESS.MEMBER, render: renderAbsences },
   { id: "meetings", label: "Meetings", icon: "📅", level: ACCESS.MEMBER, render: renderMeetings },

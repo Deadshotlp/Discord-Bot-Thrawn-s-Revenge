@@ -20,6 +20,7 @@ import { registerMeetingRoutes } from "./routes/meetings.js";
 import { registerMonitoringRoutes } from "./routes/monitoring.js";
 import { registerSteamRoutes } from "./routes/steam.js";
 import { registerSupportRoutes } from "./routes/support.js";
+import { registerTeamListRoutes } from "./routes/teamList.js";
 
 const publicDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -55,6 +56,7 @@ export function createWebServer(client) {
   registerGuildRoutes(router, { client });
   registerMonitoringRoutes(router, { client });
   registerSupportRoutes(router, { client });
+  registerTeamListRoutes(router, { client });
   registerAbsenceRoutes(router, { client });
   registerMeetingRoutes(router, { client });
   registerSteamRoutes(router, { client });

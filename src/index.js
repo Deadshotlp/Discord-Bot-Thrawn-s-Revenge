@@ -32,15 +32,24 @@ const settingsStore = new SettingsStore(modules, logger);
 const scheduler = new Scheduler(logger);
 const { commandRegistry, commandPayload, commandToModule } = buildCommandRegistry(modules);
 
+// Standardmäßig ohne das privilegierte Intent GuildMembers: Mitglieder werden
+// bei Bedarf einzeln per REST nachgeladen, das reicht für Dashboard und die
+// meisten Module. Nur die Teamliste braucht die vollständige Mitgliederliste –
+// dafür GUILD_MEMBERS_INTENT=true setzen und das Intent im Developer Portal
+// freischalten.
+const intents = [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.GuildMessageReactions,
+  GatewayIntentBits.GuildVoiceStates
+];
+
+if (env.guildMembersIntent) {
+  intents.push(GatewayIntentBits.GuildMembers);
+}
+
 const client = new Client({
-  // Bewusst ohne das privilegierte Intent GuildMembers: Mitglieder werden bei
-  // Bedarf einzeln per REST nachgeladen, das reicht für Dashboard und Module.
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.GuildVoiceStates
-  ],
+  intents,
   partials: [
     Partials.Channel,
     Partials.GuildMember,
