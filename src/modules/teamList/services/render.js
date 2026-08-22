@@ -15,6 +15,13 @@ const RESERVED = 600;
 const MIN_LIST_BUDGET = 90;
 
 const ACCENT = "#5865f2";
+
+// Discord bemisst die Breite eines Embeds am längsten Inhalt, deshalb wären
+// die Bereiche unterschiedlich breit. U+2800 (Braille-Leerzeichen) ist ein
+// druckbares Zeichen und wird – anders als ein normales Leerzeichen – nicht
+// zusammengefaltet. Eine Zeile daraus setzt eine Mindestbreite, sodass alle
+// Embeds gleich breit erscheinen.
+const WIDTH_SPACER = "\u2800".repeat(46);
 const LEAD_BADGE = "👑";
 const MEMBER_BADGE = "•";
 
@@ -160,6 +167,7 @@ export function buildRosterEmbeds(roster, { guildName = "", departmentId = "" } 
       `**${roster.totals.members}** Personen im Team`
       + ` · **${roster.totals.leads}** in der Leitung`
       + ` · **${roster.totals.absent}** aktuell abgemeldet`
+      + `\n${WIDTH_SPACER}`
     );
 
   // Ein Platz geht an die Kopfzeile.
@@ -170,7 +178,11 @@ export function buildRosterEmbeds(roster, { guildName = "", departmentId = "" } 
   const lines = shown.map((group) => group.members.map(formatMemberLine));
   const needs = lines.map((group) => group.reduce((sum, line) => sum + line.length + 1, 0));
 
-  const fixed = shown.reduce((sum, group, index) => sum + group.name.length + metas[index].length, 0);
+  // Der Breiten-Platzhalter zählt gegen das Gesamtlimit und wird vorab abgezogen.
+  const fixed = shown.reduce(
+    (sum, group, index) => sum + group.name.length + metas[index].length + WIDTH_SPACER.length + 1,
+    0
+  );
   const budget = EMBED_TOTAL_LIMIT - RESERVED - header.data.description.length - fixed;
   const limits = allocateBudgets(needs, budget);
 
@@ -193,7 +205,7 @@ export function buildRosterEmbeds(roster, { guildName = "", departmentId = "" } 
       new EmbedBuilder()
         .setTitle(group.name)
         .setColor(ACCENT)
-        .setDescription(`${metas[index]}\n\n${body}`)
+        .setDescription(`${metas[index]}\n\n${body}\n${WIDTH_SPACER}`)
     );
   }
 

@@ -290,3 +290,17 @@ test("ein einzelnes Department lässt sich gezielt anzeigen", () => {
   assert.equal(embeds.length, 2);
   assert.equal(embeds[1].toJSON().title, "Technik");
 });
+
+test("alle Embeds bekommen dieselbe Mindestbreite", () => {
+  const roster = buildRoster({ members: MEMBERS, departments: DEPARTMENTS, today: TODAY });
+  const embeds = buildRosterEmbeds(roster, { guildName: "Testserver" });
+
+  // U+2800 wird von Discord nicht zusammengefaltet und setzt die Breite.
+  const breiten = embeds.map((embed) => {
+    const zeile = embed.toJSON().description.split("\n").find((line) => line.includes("\u2800"));
+    return zeile ? zeile.length : 0;
+  });
+
+  assert.ok(breiten.every((breite) => breite > 0), "ein Embed ohne Breiten-Platzhalter");
+  assert.equal(new Set(breiten).size, 1, `unterschiedliche Breiten: ${breiten.join(", ")}`);
+});
