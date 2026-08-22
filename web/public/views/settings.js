@@ -28,6 +28,8 @@ const MODULE_FIELDS = {
     { key: "alertRoleId", label: "Ping-Rolle bei Ausfall", type: "role" }
   ],
   absence: [
+    { key: "panelChannelId", label: "Abmelde-Panel-Channel", type: "channel",
+      hint: "Dort stellt der Bot ein Panel mit Button zum Abmelden bereit" },
     { key: "announceChannelId", label: "Ankündigungs-Channel", type: "channel" },
     { key: "overviewChannelId", label: "Übersichts-Channel", type: "channel", hint: "Dauerhaft aktualisierte Wer-ist-weg-Nachricht" },
     { key: "overviewDays", label: "Vorschau in Tagen", type: "number", min: 7, max: 120 },
