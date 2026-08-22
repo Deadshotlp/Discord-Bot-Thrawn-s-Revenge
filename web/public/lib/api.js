@@ -86,6 +86,7 @@ export const api = {
   createDepartment: (guildId, data) => request("POST", `/api/guilds/${guildId}/departments`, data),
   updateDepartment: (guildId, id, data) => request("PATCH", `/api/guilds/${guildId}/departments/${id}`, data),
   deleteDepartment: (guildId, id) => request("DELETE", `/api/guilds/${guildId}/departments/${id}`, {}),
+  reorderDepartments: (guildId, ids) => request("POST", `/api/guilds/${guildId}/departments/order`, { ids }),
 
   steamMe: (guildId) => request("GET", `/api/guilds/${guildId}/steam/me`),
   steamUnlinkMe: (guildId) => request("DELETE", `/api/guilds/${guildId}/steam/me`, {}),

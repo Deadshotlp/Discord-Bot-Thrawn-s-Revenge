@@ -223,6 +223,21 @@ function departmentsCard(guildId, guild, departments, refresh) {
     leadRoleIds: [...form.querySelectorAll('input[name="leadRoleIds"]:checked')].map((input) => input.value)
   });
 
+  // Reihenfolge wird als komplette ID-Liste geschickt; der Server ordnet danach.
+  const move = async (index, direction) => {
+    const ids = departments.map((department) => department.id);
+    const target = index + direction;
+
+    if (target < 0 || target >= ids.length) {
+      return;
+    }
+
+    [ids[index], ids[target]] = [ids[target], ids[index]];
+
+    await api.reorderDepartments(guildId, ids);
+    await refresh();
+  };
+
   return card(
     h("div.row-between", { style: { width: "100%" } },
       h("span", {}, "Departments"),
@@ -240,10 +255,24 @@ function departmentsCard(guildId, guild, departments, refresh) {
         : null),
 
     h("p.muted", { style: { fontSize: "13px" } },
-      "Departments strukturieren Tickets, Wochenberichte und Abmeldungen gleichermaßen."),
+      "Departments strukturieren Tickets, Wochenberichte und Abmeldungen gleichermaßen. "
+      + "Die Reihenfolge hier bestimmt auch die Reihenfolge in der Teamliste."),
 
-    table(["Name", "ID", "Mitglieder-Rollen", "Leitungs-Rollen", ""],
-      departments.map((department) => [
+    table(["#", "Name", "ID", "Mitglieder-Rollen", "Leitungs-Rollen", ""],
+      departments.map((department, index) => [
+        isAdmin
+          ? h("div.row", {},
+            h("button.btn.btn-sm", {
+              disabled: index === 0,
+              title: "Nach oben",
+              onClick: () => move(index, -1)
+            }, "↑"),
+            h("button.btn.btn-sm", {
+              disabled: index === departments.length - 1,
+              title: "Nach unten",
+              onClick: () => move(index, 1)
+            }, "↓"))
+          : String(index + 1),
         h("strong", {}, department.name),
         h("span.mono", { style: { fontSize: "12px" } }, department.id),
         department.roleIds.map((id) => guild.roles.find((role) => role.id === id)?.name || id).join(", ") || "–",
